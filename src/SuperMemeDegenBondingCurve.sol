@@ -66,7 +66,6 @@ contract SuperMemeDegenBondingCurve is ERC20 {
         uint256 _devLockDuration,
         uint256 _buyEth
     ) public payable ERC20(_name, _symbol) {
-        console.log("inside constructor");
         factoryContract = msg.sender;
         revenueCollector = _revenueCollector;
         IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
@@ -78,51 +77,42 @@ contract SuperMemeDegenBondingCurve is ERC20 {
         devAddress = _devAdress;
         devLocked = _devLocked;
         devLockTime = block.timestamp + _devLockDuration;
-        console.log("before buyTokens");
         if (_amount > 0) {
             buyTokens(_amount, 100, _buyEth);
         }
     }
-
     function buyTokens(
         uint256 _amount,
         uint256 _slippage,
         uint256 _buyEth
     ) public payable {
-        console.log("inside buyTokens");
         require(_amount > 0, "Amount must be greater than 0");
         require(
             bondingCurveCompleted == false,
             "Bonding curve completed, no more tokens can be bought"
         );
-
-        if (scaledSupply >= MAX_SALE_SUPPLY) {
-            bondingCurveCompleted = true;
-        }
-        console.log("before calculate cost");
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
-
-        console.log("after calculate cost");
         uint256 totalCost = cost + tax;
         uint256 slippageAmount = (totalCost * _slippage) / 10000;
         uint256 minimumCost = totalCost - slippageAmount;
-        console.log("before slippage requirement");
         require(
             _buyEth >= minimumCost && _buyEth <= totalCost + slippageAmount,
             "Insufficient or excess Ether sent, exceeds slippage tolerance"
         );
-        console.log("before payTax");
-        payTax(tax);
-        console.log("after payTax");
+        //payTax(tax);
         // check if totalcost is greater than the amount of ether sent
         uint256 excessEth = (_buyEth - totalCost > 0) ? _buyEth - totalCost : 0;
-        console.log("excess ETH: %s", excessEth);
-
-        console.log("after excessEth");
-        totalEtherCollected += totalCost - tax;
+        require(
+            scaledSupply + _amount <= MAX_SALE_SUPPLY,
+            "Exceeds maximum supply"
+        );
+        totalEtherCollected += totalCost - tax -excessEth;
         scaledSupply += _amount;
 
+        if (scaledSupply >= MAX_SALE_SUPPLY) {
+            bondingCurveCompleted = true;
+        }
         address buyer = (msg.sender == factoryContract)
             ? devAddress
             : msg.sender;
@@ -131,17 +121,12 @@ contract SuperMemeDegenBondingCurve is ERC20 {
             payable(buyer).transfer(excessEth);
         }
         _mint(buyer, _amount * 10 ** 18);
-        console.log("after mint");
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
         emit tokensBought(_amount, cost, address(this), buyer, totalSup);
         emit Price(lastPrice, totalSup, address(this), _amount);
 
-        require(
-            scaledSupply + _amount <= MAX_SALE_SUPPLY,
-            "Exceeds maximum supply"
-        );
-        console.log("buy function completed");
+
     }
     function calculateCost(uint256 amount) public view returns (uint256) {
         uint256 currentSupply = scaledSupply;
@@ -155,5 +140,22 @@ contract SuperMemeDegenBondingCurve is ERC20 {
         totalRevenueCollected += _tax;
     }
 
-
+    function sendToDex() public payable {
+        require(bondingCurveCompleted, "Bonding curve not completed");
+        payTax(sendDexRevenue);
+        totalEtherCollected -= sendDexRevenue;
+        uint256 _ethAmount = totalEtherCollected;
+        uint256 _tokenAmount = liquidityThreshold;
+        _approve(address(this), address(uniswapV2Router), _tokenAmount);
+        uniswapV2Router.addLiquidityETH{value: _ethAmount}(
+            address(this),
+            _tokenAmount,
+            0,
+            0,
+            address(this),
+            block.timestamp
+        );
+        emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
+    }
+    
 }

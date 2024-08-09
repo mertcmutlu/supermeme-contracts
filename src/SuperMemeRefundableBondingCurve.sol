@@ -150,9 +150,9 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         }
 
         console.log("function completed");
-        // if (bondingCurveCompleted) {
-        //     sendToDex();
-        // }
+        if (bondingCurveCompleted) {
+            sendToDex();
+        }
     }
     function calculateUserBuyPointPercentages(address _buyer) internal {
         uint256[] memory userBuyPoints = userBuysPoints[msg.sender];
@@ -175,5 +175,22 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
     function payTax(uint256 _tax) internal {
         payable(revenueCollector).transfer(_tax);
         totalRevenueCollected += _tax;
+    }
+        function sendToDex() public payable {
+        require(bondingCurveCompleted, "Bonding curve not completed");
+        payTax(sendDexRevenue);
+        totalEtherCollected -= sendDexRevenue;
+        uint256 _ethAmount = totalEtherCollected;
+        uint256 _tokenAmount = liquidityThreshold;
+        _approve(address(this), address(uniswapV2Router), _tokenAmount);
+        uniswapV2Router.addLiquidityETH{value: _ethAmount}(
+            address(this),
+            _tokenAmount,
+            0,
+            0,
+            address(this),
+            block.timestamp
+        );
+        emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
     }
 }

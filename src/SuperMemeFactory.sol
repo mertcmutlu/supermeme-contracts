@@ -52,7 +52,6 @@ contract SuperMemeFactory {
             _devLockDuration == 0 &&
             _buyEth == 0
         ) {
-            console.log("inside no dev no buy if");
              token = address(
                 new SuperMemeDegenBondingCurve(
                     _name,
@@ -155,7 +154,7 @@ contract SuperMemeFactory {
         );
         return address(token);
     }
-        function receive() external payable {}
+     
 }
 
 // string memory _name,
