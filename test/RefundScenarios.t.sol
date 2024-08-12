@@ -25,6 +25,11 @@ contract RefundScenariosTest is Test {
     address public addr1 = address(0x456);
     address public addr2 = address(0x789);
     address public addr3 = address(0x101112);
+    address public addr4 = address(0x131415);
+    address public addr5 = address(0x161718);
+    address public addr6 = address(0x192021);
+    address public addr7 = address(0x222324);
+
 
 
     function setUp() public {
@@ -36,6 +41,13 @@ contract RefundScenariosTest is Test {
         vm.deal(owner, 1000 ether);
         vm.deal(addr1, 1000 ether);
         vm.deal(addr2, 1000 ether);
+        vm.deal(addr3, 1000 ether);
+        vm.deal(addr4, 1000 ether);
+        vm.deal(addr5, 1000 ether);
+        vm.deal(addr6, 1000 ether);
+        vm.deal(addr7, 1000 ether);
+
+
         vm.startPrank(addr1);
         factory = new SuperMemeFactory();
 
@@ -70,6 +82,226 @@ contract RefundScenariosTest is Test {
         uint256 totalCost = cost + tax;
         tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(dummyBuyAmount, 100, totalCost);
         assertEq(tTokenInstanceRefund.balanceOf(addr1), dummyBuyAmount * 10 ** 18);
+    }
+
+    function testBuyerRefundsWithDifferentAmounts() public {
+        uint256[] memory amounts = new uint256[](7);
+        amounts[0] = 1000;
+        amounts[1] = 10000;
+        amounts[2] = 100000;
+        amounts[3] = 1000000;
+        amounts[4] = 10000000;
+        amounts[5] = 100000000;
+        amounts[6] = 799999999;
+        for (uint256 i = 0; i < amounts.length; i++) {
+            vm.startPrank(addr1);
+            address newToken = factory.createToken{value: createTokenRevenue}(
+                "SuperMeme",
+                "MEME",
+                false,
+                0,
+                address(addr1),
+                0,
+                0,
+                1
+            );
+
+            tTokenInstanceRefund = SuperMemeRefundableBondingCurve(
+                    newToken
+                );
+            uint256 cost = tTokenInstanceRefund.calculateCost(amounts[i]);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(amounts[i], 100, totalCost);
+            assertEq(tTokenInstanceRefund.balanceOf(addr1), amounts[i] * 10 ** 18);
+            uint256 balanceBefore = address(addr1).balance;
+            uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addr1);
+            console.log("number of tries", i);
+            tTokenInstanceRefund.refund();
+            uint256 balanceAfter = address(addr1).balance;
+            uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addr1);
+
+            assertGt(balanceAfter, balanceBefore);
+            assertGt(tokenBalanceBefore, tokenBalanceAfter);
+
+            vm.stopPrank();
+        }
 
     }
+
+    function testBuyerRefundWithNextUsers() public {
+        vm.startPrank(addr1);
+        uint256 cost = tTokenInstanceRefund.calculateCost(dummyBuyAmount);
+        uint256 tax = cost / 100;
+        uint256 slippage = 100;
+        uint256 totalCost = cost + tax;
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(dummyBuyAmount, 100, totalCost);
+        assertEq(tTokenInstanceRefund.balanceOf(addr1), dummyBuyAmount * 10 ** 18);
+        vm.stopPrank();
+
+        vm.startPrank(addr2);
+        uint256 cost2 = tTokenInstanceRefund.calculateCost(dummyBuyAmount2);
+        uint256 tax2 = cost2 / 100;
+        uint256 slippage2 = 100;
+        uint256 totalCost2 = cost2 + tax2;
+        tTokenInstanceRefund.buyTokens{value: totalCost2 + slippage2}(dummyBuyAmount2, 100, totalCost2);
+        assertEq(tTokenInstanceRefund.balanceOf(addr2), dummyBuyAmount2 * 10 ** 18);
+        uint256 balanceBeforeaddr2 = address(addr2).balance;
+        uint256 tokenBalanceBeforeaddr2 = tTokenInstanceRefund.balanceOf(addr2);
+        vm.stopPrank();
+
+        vm.startPrank(addr3);
+        uint256 cost3 = tTokenInstanceRefund.calculateCost(dummyBuyAmount);
+        uint256 tax3 = cost3 / 100;
+        uint256 slippage3 = 100;
+        uint256 totalCost3 = cost3 + tax3;
+        tTokenInstanceRefund.buyTokens{value: totalCost3 + slippage3}(dummyBuyAmount, 100, totalCost3);
+        assertEq(tTokenInstanceRefund.balanceOf(addr3), dummyBuyAmount * 10 ** 18);
+        uint256 balanceBeforeaddr3 = address(addr3).balance;
+        uint256 tokenBalanceBeforeaddr3 = tTokenInstanceRefund.balanceOf(addr3);
+        vm.stopPrank();
+
+        vm.startPrank(addr4);
+        uint256 cost4 = tTokenInstanceRefund.calculateCost(dummyBuyAmount2);
+        uint256 tax4 = cost4 / 100;
+        uint256 slippage4 = 100;
+        uint256 totalCost4 = cost4 + tax4;
+        tTokenInstanceRefund.buyTokens{value: totalCost4 + slippage4}(dummyBuyAmount2, 100, totalCost4);
+        assertEq(tTokenInstanceRefund.balanceOf(addr4), dummyBuyAmount2 * 10 ** 18);
+        uint256 balanceBeforeaddr4 = address(addr4).balance;
+        uint256 tokenBalanceBeforeaddr4 = tTokenInstanceRefund.balanceOf(addr4);
+        vm.stopPrank();
+
+        vm.startPrank(addr5);
+        uint256 cost5 = tTokenInstanceRefund.calculateCost(dummyBuyAmount);
+        uint256 tax5 = cost5 / 100;
+        uint256 slippage5 = 100;
+        uint256 totalCost5 = cost5 + tax5;
+        tTokenInstanceRefund.buyTokens{value: totalCost5 + slippage5}(dummyBuyAmount, 100, totalCost5);
+        assertEq(tTokenInstanceRefund.balanceOf(addr5), dummyBuyAmount * 10 ** 18);
+        uint256 balanceBeforeaddr5 = address(addr5).balance;
+        uint256 tokenBalanceBeforeaddr5 = tTokenInstanceRefund.balanceOf(addr5);
+        vm.stopPrank();
+
+        //user 1 refunds
+        vm.startPrank(addr1);
+        uint256 balanceBefore = address(addr1).balance;
+        uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addr1);
+        tTokenInstanceRefund.refund();
+        uint256 balanceAfter = address(addr1).balance;
+        uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addr1);
+
+        uint256 balanceAfteraddr2 = address(addr2).balance;
+        uint256 tokenBalanceAfteraddr2 = tTokenInstanceRefund.balanceOf(addr2);
+        uint256 balanceAfteraddr3 = address(addr3).balance;
+        uint256 tokenBalanceAfteraddr3 = tTokenInstanceRefund.balanceOf(addr3);
+        uint256 balanceAfteraddr4 = address(addr4).balance;
+        uint256 tokenBalanceAfteraddr4 = tTokenInstanceRefund.balanceOf(addr4);
+        uint256 balanceAfteraddr5 = address(addr5).balance;
+        uint256 tokenBalanceAfteraddr5 = tTokenInstanceRefund.balanceOf(addr5);
+
+
+        assertGt(balanceAfter, balanceBefore);
+        assertGt(tokenBalanceBefore, tokenBalanceAfter);
+        assertGt(tokenBalanceAfteraddr2, tokenBalanceBeforeaddr2);
+        assertGt(tokenBalanceAfteraddr3, tokenBalanceBeforeaddr3);
+        assertGt(tokenBalanceAfteraddr4, tokenBalanceBeforeaddr4);
+        assertGt(tokenBalanceAfteraddr5, tokenBalanceBeforeaddr5);
+        vm.stopPrank();
+    }
+
+    function testIntermediateBuyerRefundsWithoutNextUsers() public {
+        vm.startPrank(addr1);
+        uint256 cost = tTokenInstanceRefund.calculateCost(dummyBuyAmount);
+        uint256 tax = cost / 100;
+        uint256 slippage = 100;
+        uint256 totalCost = cost + tax;
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(dummyBuyAmount, 100, totalCost);
+        assertEq(tTokenInstanceRefund.balanceOf(addr1), dummyBuyAmount * 10 ** 18);
+        uint256 balanceBefore = address(addr1).balance;
+        uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addr1);
+        vm.stopPrank();
+
+        vm.startPrank(addr2);
+        uint256 cost2 = tTokenInstanceRefund.calculateCost(dummyBuyAmount2);
+        uint256 tax2 = cost2 / 100;
+        uint256 slippage2 = 100;
+        uint256 totalCost2 = cost2 + tax2;
+        tTokenInstanceRefund.buyTokens{value: totalCost2 + slippage2}(dummyBuyAmount2, 100, totalCost2);
+        assertEq(tTokenInstanceRefund.balanceOf(addr2), dummyBuyAmount2 * 10 ** 18);
+        uint256 balanceBeforeaddr2 = address(addr2).balance;
+        uint256 tokenBalanceBeforeaddr2 = tTokenInstanceRefund.balanceOf(addr2);
+        vm.stopPrank();
+
+        vm.startPrank(addr3);
+        uint256 cost3 = tTokenInstanceRefund.calculateCost(dummyBuyAmount);
+        uint256 tax3 = cost3 / 100;
+        uint256 slippage3 = 100;
+        uint256 totalCost3 = cost3 + tax3;
+        tTokenInstanceRefund.buyTokens{value: totalCost3 + slippage3}(dummyBuyAmount, 100, totalCost3);
+        assertEq(tTokenInstanceRefund.balanceOf(addr3), dummyBuyAmount * 10 ** 18);
+        uint256 balanceBeforeaddr3 = address(addr3).balance;
+        uint256 tokenBalanceBeforeaddr3 = tTokenInstanceRefund.balanceOf(addr3);
+        vm.stopPrank();
+
+        vm.startPrank(addr4);
+        uint256 cost4 = tTokenInstanceRefund.calculateCost(dummyBuyAmount2);
+        uint256 tax4 = cost4 / 100;
+        uint256 slippage4 = 100;
+        uint256 totalCost4 = cost4 + tax4;
+        tTokenInstanceRefund.buyTokens{value: totalCost4 + slippage4}(dummyBuyAmount2, 100, totalCost4);
+        assertEq(tTokenInstanceRefund.balanceOf(addr4), dummyBuyAmount2 * 10 ** 18);
+        uint256 balanceBeforeaddr4 = address(addr4).balance;
+        uint256 tokenBalanceBeforeaddr4 = tTokenInstanceRefund.balanceOf(addr4);
+        vm.stopPrank();
+        vm.startPrank(addr2);
+         balanceBeforeaddr2 = address(addr2).balance;
+         tokenBalanceBeforeaddr2 = tTokenInstanceRefund.balanceOf(addr2);
+        tTokenInstanceRefund.refund();
+        uint256 balanceAfteraddr2 = address(addr2).balance;
+        uint256 tokenBalanceAfteraddr2 = tTokenInstanceRefund.balanceOf(addr2);
+        uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addr1);
+        uint256 tokenBalanceAfteraddr3 = tTokenInstanceRefund.balanceOf(addr3);
+        uint256 tokenBalanceAfteraddr4 = tTokenInstanceRefund.balanceOf(addr4);
+        assertGt(balanceAfteraddr2, balanceBeforeaddr2);
+        assertGt(tokenBalanceBeforeaddr2, tokenBalanceAfteraddr2);
+        assertGt(tokenBalanceAfteraddr3, tokenBalanceBeforeaddr3);
+        assertEq(tokenBalanceBefore, tokenBalanceAfter);
+        assertGt(tokenBalanceAfteraddr4, tokenBalanceBeforeaddr4);
+    }
+
+    function testBuyerRefundsAfterBulkUsers() public {
+        //generate an array of addresses and fund them
+        address[] memory addresses = new address[](50);
+        for (uint256 i = 0; i < 50; i++) {
+            addresses[i] = address(uint160(uint256(keccak256(abi.encodePacked(i)))));
+            vm.deal(addresses[i], 1000 ether);
+        }
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 buyAmountForBulk = 100000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 balanceBefore = address(addresses[i]).balance;
+            uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addresses[i]);
+            tTokenInstanceRefund.refund();
+            uint256 balanceAfter = address(addresses[i]).balance;
+            uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addresses[i]);
+            assertGt(balanceAfter, balanceBefore);
+            assertGt(tokenBalanceBefore, tokenBalanceAfter);
+            vm.stopPrank();
+        }
+
+    }
+
+
 }

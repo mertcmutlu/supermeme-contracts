@@ -139,8 +139,8 @@
 //         path[1] = (weth);
 
 //         uint256[] memory amounts;
-//         amounts = router.getAmountsOut(1 ether, path);
-//         //console.log(amounts[1], amounts[0]);
+//         amounts = router.getAmountsOut(1000000 ether, path);
+//         console.log(amounts[1], amounts[0]);
 //         vm.stopPrank();
 
 //     }

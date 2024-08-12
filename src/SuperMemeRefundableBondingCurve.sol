@@ -6,10 +6,7 @@ import "./Interfaces/IUniswapV2Router02.sol";
 import "forge-std/console.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
 
-
 contract SuperMemeRefundableBondingCurve is ERC20 {
-
-
     uint256 public constant MAX_SALE_SUPPLY = 1e9; // 1 billion tokens
     uint256 public constant TOTAL_ETHER = 4 ether;
     uint256 public MAXIMUM_TOTAL_ETHER = 4 ether;
@@ -35,7 +32,12 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
     IUniswapV2Pair public uniswapV2Pair;
 
     event SentToDex(uint256 ethAmount, uint256 tokenAmount, uint256 timestamp);
-    event Price(uint256 indexed _price, uint256 indexed _totalSupply, address indexed _tokenAddress,uint256 _amount);
+    event Price(
+        uint256 indexed _price,
+        uint256 indexed _totalSupply,
+        address indexed _tokenAddress,
+        uint256 _amount
+    );
 
     event tokensBought(
         uint256 indexed amount,
@@ -45,7 +47,7 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         uint256 totalSupply
     );
     event tokensRefunded(
-        uint256 indexed amount, 
+        uint256 indexed amount,
         uint256 refund,
         address indexed _tokenAddress,
         address indexed _refunder,
@@ -62,12 +64,11 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
     mapping(address => uint256[]) public userBuyPointPercentages;
     mapping(address => uint256) public totalEthPaidUser;
     mapping(address => uint256) public userBalanceScaled;
+    mapping(address => bool) public userRefunded;
 
     address public devAddress;
     uint256 public devLockDuration;
     address public factoryContract;
-
-
 
     constructor(
         string memory _name,
@@ -92,7 +93,12 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
             buyTokens(_amount, 100, _ethBuy);
         }
     }
-    function buyTokens(uint256 _amount, uint256 _slippage,uint256 _ethBuy) public payable {
+    function buyTokens(
+        uint256 _amount,
+        uint256 _slippage,
+        uint256 _ethBuy
+    ) public payable {
+        require(userRefunded[msg.sender] == false, "User already refunded");
         require(
             !bondingCurveCompleted,
             "Bonding curve completed, no buys allowed"
@@ -103,11 +109,11 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
 
         uint256 totalCost = cost + tax;
-   
 
         uint256 slippageAmount = (totalCost * _slippage) / 10000;
         require(
-            _ethBuy >= totalCost - slippageAmount && _ethBuy <= totalCost + slippageAmount,
+            _ethBuy >= totalCost - slippageAmount &&
+                _ethBuy <= totalCost + slippageAmount,
             "Insufficient or excess Ether sent, exceeds slippage tolerance"
         );
         require(msg.value >= cost + tax, "Insufficient Ether sent");
@@ -127,7 +133,7 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         userBuyPointsEthPaid[buyer].push(msg.value - tax);
         buyCount += 1;
 
-        totalEthPaidUser[buyer] += _ethBuy -tax;
+        totalEthPaidUser[buyer] += _ethBuy - tax;
         totalEtherCollected += _ethBuy - tax - excessEth;
         cumulativeEthCollected[buyCount] += _ethBuy - tax - excessEth;
         calculateUserBuyPointPercentages(buyer);
@@ -136,15 +142,9 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         _mint(buyer, _amount * 10 ** 18);
         uint256 totalSup = totalSupply();
         uint256 price = calculateCost(1);
-            emit tokensBought(
-                _amount,
-                cost,
-                address(this),
-                buyer,
-                totalSup
-            );
-            emit Price(price, totalSup, address(this),_amount);
-        
+        emit tokensBought(_amount, cost, address(this), buyer, totalSup);
+        emit Price(price, totalSup, address(this), _amount);
+
         if (scaledSupply >= MAX_SALE_SUPPLY) {
             bondingCurveCompleted = true;
         }
@@ -160,7 +160,7 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
             uint256 buyPoint = userBuyPoints[i];
             uint256 cost = buyCost[buyPoint];
             uint256 percentage = (cost * buyPointScale) /
-            totalEthPaidUser[_buyer];
+                totalEthPaidUser[_buyer];
             userBuyPointPercentages[_buyer].push(percentage);
         }
     }
@@ -176,7 +176,7 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         payable(revenueCollector).transfer(_tax);
         totalRevenueCollected += _tax;
     }
-        function sendToDex() public payable {
+    function sendToDex() public payable {
         require(bondingCurveCompleted, "Bonding curve not completed");
         payTax(sendDexRevenue);
         totalEtherCollected -= sendDexRevenue;
@@ -192,5 +192,92 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
             block.timestamp
         );
         emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
+    }
+
+    function refund() public {
+        require(
+            bondingCurveCompleted == false,
+            "Bonding curve completed, no refunds allowed"
+        );
+        (uint256 toTheCurve, uint256 toBeDistributed) = calculateTokensRefund();
+        require(
+            balanceOf(msg.sender) >= (toTheCurve + toBeDistributed),
+            "Insufficient token balance"
+        );
+        uint256 amountToBeRefundedEth = totalEthPaidUser[msg.sender];
+        require(
+            address(this).balance >= amountToBeRefundedEth,
+            "Insufficient Ether in contract"
+        );
+        payTax((amountToBeRefundedEth * tradeTax) / tradeTaxDivisor);
+        _burn(msg.sender, toTheCurve);
+        _transfer(msg.sender, address(this), toBeDistributed);
+        uint256[] memory userBuyPoints = userBuysPoints[msg.sender];
+        for (uint256 i = 0; i < userBuyPoints.length; i++) {
+            uint256 buyPoint = userBuyPoints[i];
+            uint256 ethPaidByOtherUsersInBetween = cumulativeEthCollected[
+                buyCount
+            ] - cumulativeEthCollected[buyPoint];
+            for (uint256 j = buyCount - 1; j >= buyPoint; j--) {
+                if (buyIndex[j] == address(0)) {
+                    break;
+                } else if (j == buyPoint) {
+                    break;
+                } else if (buyIndex[j] == msg.sender) {
+                    continue;
+                } else {
+                    uint256 refundAmountForInstance = (userBuyPointPercentages[
+                        msg.sender
+                    ][i] * toBeDistributed) / buyPointScale;
+                    uint256 refundAmountForUser = (buyCost[j] *
+                        refundAmountForInstance) / ethPaidByOtherUsersInBetween;
+                    _transfer(address(this), buyIndex[j], refundAmountForUser);
+                }
+            }
+            userRefunded[msg.sender] = true;
+        }
+        uint256 finalRefundAmount = (amountToBeRefundedEth -
+            (amountToBeRefundedEth * tradeTax) /
+            tradeTaxDivisor);
+        payable(msg.sender).transfer(finalRefundAmount);
+        totalEtherCollected -= amountToBeRefundedEth;
+        totalRefundedTokens += toTheCurve;
+        scaledSupply -= toTheCurve / 10 ** 18;
+        MAXIMUM_TOTAL_ETHER -= amountToBeRefundedEth;
+        uint256 totalSup = totalSupply();
+        uint256 price = calculateCost(1);
+        emit tokensRefunded(
+            toTheCurve,
+            finalRefundAmount,
+            address(this),
+            msg.sender,
+            price
+        );
+
+        emit Price(price, totalSup, address(this), toTheCurve);
+    }
+        function calculateTokensRefund() public view returns (uint256, uint256) {
+        uint256 userBalance = userBalanceScaled[msg.sender];
+        uint256 currentSupply = scaledSupply;
+        uint256 totalEthPaidUserVar = totalEthPaidUser[msg.sender];
+        uint256 supplyDifference = (totalEthPaidUserVar * 77500 * 3 * SCALE) /
+            (40000 * A * 10 ** 5);
+        uint256 newSupplyCubed = currentSupply ** 3 - supplyDifference;
+        uint256 newSupply = cubeRoot(newSupplyCubed);
+        uint256 _amount = currentSupply - newSupply;
+        if (_amount > userBalance) {
+            _amount = userBalance;
+        }
+        uint256 amountToBeRedistributed = userBalance - _amount;
+        return (_amount * 10 ** 18, amountToBeRedistributed * 10 ** 18);
+    }
+    function cubeRoot(uint256 x) internal pure returns (uint256) {
+        uint256 z = (x + 1) / 3;
+        uint256 y = x;
+        while (z < y) {
+            y = z;
+            z = (x / (z * z) + 2 * z) / 3;
+        }
+        return y;
     }
 }
