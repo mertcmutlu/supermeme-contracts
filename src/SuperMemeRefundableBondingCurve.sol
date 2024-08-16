@@ -1,13 +1,12 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./Interfaces/IUniswapV2Router02.sol";
-import "forge-std/console.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
 
 contract SuperMemeRefundableBondingCurve is ERC20 {
-    uint256 public constant MAX_SALE_SUPPLY = 1e9; // 1 billion tokens
+    uint256 public  MAX_SALE_SUPPLY = 1e9; // 1 billion tokens
     uint256 public constant TOTAL_ETHER = 4 ether;
     uint256 public MAXIMUM_TOTAL_ETHER = 4 ether;
     uint256 public constant SCALE = 1e18; // Scaling factor
@@ -89,7 +88,6 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         devAddress = _devAdress;
 
         if (_amount > 0) {
-            console.log("amount is greater than 0, trying to buy tokens");
             buyTokens(_amount, 100, _ethBuy);
         }
     }
@@ -98,48 +96,44 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         uint256 _slippage,
         uint256 _ethBuy
     ) public payable {
-        require(userRefunded[msg.sender] == false, "User already refunded");
-        require(
-            !bondingCurveCompleted,
-            "Bonding curve completed, no buys allowed"
-        );
+        require(!userRefunded[msg.sender], "Refunded");
+        require(!bondingCurveCompleted, "Curve done");
+        require(_amount > 0, "0 amount");
 
-        require(_amount > 0, "Amount must be greater than 0");
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
-
         uint256 totalCost = cost + tax;
-
         uint256 slippageAmount = (totalCost * _slippage) / 10000;
+
         require(
             _ethBuy >= totalCost - slippageAmount &&
-                _ethBuy <= totalCost + slippageAmount,
-            "Insufficient or excess Ether sent, exceeds slippage tolerance"
+            _ethBuy <= totalCost + slippageAmount,
+            "Slippage"
         );
-        require(msg.value >= cost + tax, "Insufficient Ether sent");
+        require(msg.value >= cost + tax, "Insufficient ETH");
+
         payTax(tax);
+
         uint256 excessEth = (_ethBuy - totalCost > 0) ? _ethBuy - totalCost : 0;
-        address buyer = (msg.sender == factoryContract)
-            ? devAddress
-            : msg.sender;
-        console.log("before excess eth");
+        address buyer = (msg.sender == factoryContract) ? devAddress : msg.sender;
         if (excessEth > 0) {
             payable(buyer).transfer(excessEth);
         }
-        console.log("after excess eth");
-        buyIndex[buyCount] = buyer;
-        buyCost[buyCount] = cost;
-        userBuysPoints[buyer].push(buyCount);
-        userBuyPointsEthPaid[buyer].push(msg.value - tax);
+
         buyCount += 1;
+        buyIndex[buyCount] = buyer;
+        buyCost[buyCount] = _ethBuy - tax;
+        userBuysPoints[buyer].push(buyCount);
+        userBuyPointsEthPaid[buyer].push(_ethBuy - tax);
 
         totalEthPaidUser[buyer] += _ethBuy - tax;
-        totalEtherCollected += _ethBuy - tax - excessEth;
-        cumulativeEthCollected[buyCount] += _ethBuy - tax - excessEth;
+        totalEtherCollected += cost;
+        cumulativeEthCollected[buyCount] += cumulativeEthCollected[buyCount-1] + _ethBuy - tax;
         calculateUserBuyPointPercentages(buyer);
         userBalanceScaled[buyer] += _amount;
         scaledSupply += _amount;
         _mint(buyer, _amount * 10 ** 18);
+
         uint256 totalSup = totalSupply();
         uint256 price = calculateCost(1);
         emit tokensBought(_amount, cost, address(this), buyer, totalSup);
@@ -148,8 +142,6 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         if (scaledSupply >= MAX_SALE_SUPPLY) {
             bondingCurveCompleted = true;
         }
-
-        console.log("function completed");
         if (bondingCurveCompleted) {
             sendToDex();
         }
@@ -164,7 +156,6 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
             userBuyPointPercentages[_buyer].push(percentage);
         }
     }
-
     function calculateCost(uint256 amount) public view returns (uint256) {
         uint256 currentSupply = scaledSupply;
         uint256 newSupply = currentSupply + amount;
@@ -177,7 +168,7 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         totalRevenueCollected += _tax;
     }
     function sendToDex() public payable {
-        require(bondingCurveCompleted, "Bonding curve not completed");
+        require(bondingCurveCompleted, "Curve not done");
         payTax(sendDexRevenue);
         totalEtherCollected -= sendDexRevenue;
         uint256 _ethAmount = totalEtherCollected;
@@ -193,32 +184,33 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         );
         emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
     }
-
     function refund() public {
-        require(
-            bondingCurveCompleted == false,
-            "Bonding curve completed, no refunds allowed"
-        );
+        require(!userRefunded[msg.sender], "Refunded");
+        require(!bondingCurveCompleted, "Curve done");
         (uint256 toTheCurve, uint256 toBeDistributed) = calculateTokensRefund();
         require(
             balanceOf(msg.sender) >= (toTheCurve + toBeDistributed),
-            "Insufficient token balance"
+            "Low balance"
         );
         uint256 amountToBeRefundedEth = totalEthPaidUser[msg.sender];
         require(
             address(this).balance >= amountToBeRefundedEth,
-            "Insufficient Ether in contract"
+            "Low ETH"
         );
+
         payTax((amountToBeRefundedEth * tradeTax) / tradeTaxDivisor);
         _burn(msg.sender, toTheCurve);
         _transfer(msg.sender, address(this), toBeDistributed);
+        
         uint256[] memory userBuyPoints = userBuysPoints[msg.sender];
         for (uint256 i = 0; i < userBuyPoints.length; i++) {
+            
             uint256 buyPoint = userBuyPoints[i];
             uint256 ethPaidByOtherUsersInBetween = cumulativeEthCollected[
                 buyCount
             ] - cumulativeEthCollected[buyPoint];
-            for (uint256 j = buyCount - 1; j >= buyPoint; j--) {
+            
+            for (uint256 j = buyCount; j >= buyPoint; j--) {
                 if (buyIndex[j] == address(0)) {
                     break;
                 } else if (j == buyPoint) {
@@ -231,15 +223,18 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
                     ][i] * toBeDistributed) / buyPointScale;
                     uint256 refundAmountForUser = (buyCost[j] *
                         refundAmountForInstance) / ethPaidByOtherUsersInBetween;
+                        
                     _transfer(address(this), buyIndex[j], refundAmountForUser);
                 }
             }
+            MAX_SALE_SUPPLY -= toBeDistributed/10**18;
             userRefunded[msg.sender] = true;
         }
         uint256 finalRefundAmount = (amountToBeRefundedEth -
             (amountToBeRefundedEth * tradeTax) /
             tradeTaxDivisor);
         payable(msg.sender).transfer(finalRefundAmount);
+        
         totalEtherCollected -= amountToBeRefundedEth;
         totalRefundedTokens += toTheCurve;
         scaledSupply -= toTheCurve / 10 ** 18;
@@ -256,7 +251,7 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
 
         emit Price(price, totalSup, address(this), toTheCurve);
     }
-        function calculateTokensRefund() public view returns (uint256, uint256) {
+    function calculateTokensRefund() public view returns (uint256, uint256) {
         uint256 userBalance = userBalanceScaled[msg.sender];
         uint256 currentSupply = scaledSupply;
         uint256 totalEthPaidUserVar = totalEthPaidUser[msg.sender];
@@ -279,5 +274,13 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
             z = (x / (z * z) + 2 * z) / 3;
         }
         return y;
+    }
+
+    function setUniRouter(address _uniswapV2Router) public {
+        uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
+    }
+
+    function remainingTokens() public view returns (uint256) {
+        return MAX_SALE_SUPPLY - scaledSupply;
     }
 }

@@ -33,7 +33,7 @@ contract RefundScenariosTest is Test {
 
 
     function setUp() public {
-        console.log("inside setup");
+        
         uint256 createTokenRevenue = 0.00001 ether;
         router = IUniswapV2Router02(address(0x5633464856F58Dfa9a358AfAf49841FEE990e30b));
         address fakeContract = address(0x12123123);
@@ -51,7 +51,7 @@ contract RefundScenariosTest is Test {
         vm.startPrank(addr1);
         factory = new SuperMemeFactory();
 
-        console.log("Factory address: ", address(factory));
+        
         address testToken = factory.createToken{value: createTokenRevenue}(
             "SuperMeme",
             "MEME",
@@ -62,11 +62,11 @@ contract RefundScenariosTest is Test {
             0,
             1
         );
-        console.log("Token address: ", testToken);
+        
         tTokenInstanceRefund = SuperMemeRefundableBondingCurve(
                 testToken
             );
-        console.log("Token address: ", testToken);
+        
         vm.stopPrank();
     }
 
@@ -117,7 +117,7 @@ contract RefundScenariosTest is Test {
             assertEq(tTokenInstanceRefund.balanceOf(addr1), amounts[i] * 10 ** 18);
             uint256 balanceBefore = address(addr1).balance;
             uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addr1);
-            console.log("number of tries", i);
+            
             tTokenInstanceRefund.refund();
             uint256 balanceAfter = address(addr1).balance;
             uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addr1);
@@ -201,12 +201,17 @@ contract RefundScenariosTest is Test {
         uint256 balanceAfteraddr5 = address(addr5).balance;
         uint256 tokenBalanceAfteraddr5 = tTokenInstanceRefund.balanceOf(addr5);
 
-
+        
         assertGt(balanceAfter, balanceBefore);
+        
         assertGt(tokenBalanceBefore, tokenBalanceAfter);
+        
         assertGt(tokenBalanceAfteraddr2, tokenBalanceBeforeaddr2);
+        
         assertGt(tokenBalanceAfteraddr3, tokenBalanceBeforeaddr3);
+        
         assertGt(tokenBalanceAfteraddr4, tokenBalanceBeforeaddr4);
+        
         assertGt(tokenBalanceAfteraddr5, tokenBalanceBeforeaddr5);
         vm.stopPrank();
     }
@@ -271,8 +276,7 @@ contract RefundScenariosTest is Test {
         assertGt(tokenBalanceAfteraddr4, tokenBalanceBeforeaddr4);
     }
 
-    function testBuyerRefundsAfterBulkUsers() public {
-        //generate an array of addresses and fund them
+    function testBulkBuysBulkRefunds() public {
         address[] memory addresses = new address[](50);
         for (uint256 i = 0; i < 50; i++) {
             addresses[i] = address(uint160(uint256(keccak256(abi.encodePacked(i)))));
@@ -300,8 +304,232 @@ contract RefundScenariosTest is Test {
             assertGt(tokenBalanceBefore, tokenBalanceAfter);
             vm.stopPrank();
         }
+    }
+
+    function testRefundInTheMiddle() public {
+
+        address[] memory addresses = new address[](50);
+        uint256[] memory balancesToken = new uint256[](50);
+        uint256[] memory balancesEth = new uint256[](50);
+        for (uint256 i = 0; i < 50; i++) {
+            addresses[i] = address(uint160(uint256(keccak256(abi.encodePacked(i)))));
+            vm.deal(addresses[i], 1000 ether);
+        }
+        
+
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 buyAmountForBulk = 100000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+        
+        vm.startPrank(addr1);
+        uint256 cost = tTokenInstanceRefund.calculateCost(dummyBuyAmount);
+        uint256 tax = cost / 100;
+        uint256 slippage = 100;
+        uint256 totalCost = cost + tax;
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(dummyBuyAmount, 100, totalCost);
+        assertEq(tTokenInstanceRefund.balanceOf(addr1), dummyBuyAmount * 10 ** 18);
+        uint256 balanceBefore = address(addr1).balance;
+        uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addr1);
+        vm.stopPrank();
+        
+
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 balanceBefore = address(addresses[i]).balance;
+            uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addresses[i]);
+            
+            tTokenInstanceRefund.refund();
+            
+            uint256 balanceAfter = address(addresses[i]).balance;
+            uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addresses[i]);
+            assertGt(balanceAfter, balanceBefore);
+            assertGt(tokenBalanceBefore, tokenBalanceAfter);
+            balancesToken[i] = tokenBalanceBefore;
+            balancesEth[i] = balanceBefore;
+            
+            vm.stopPrank();
+        }
+        
+        vm.startPrank(addr1);
+        uint256 balanceBeforeaddr1 = address(addr1).balance;
+        uint256 tokenBalanceBeforeaddr1 = tTokenInstanceRefund.balanceOf(addr1);
+        tTokenInstanceRefund.refund();
+        uint256 balanceAfteraddr1 = address(addr1).balance;
+        uint256 tokenBalanceAfteraddr1 = tTokenInstanceRefund.balanceOf(addr1);
+        
+        assertGt(balanceAfteraddr1, balanceBeforeaddr1);
+        
+        assertGt(tokenBalanceBeforeaddr1,tokenBalanceAfteraddr1);
+        vm.stopPrank();
+
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            assertLt(tTokenInstanceRefund.balanceOf(addresses[i]),balancesToken[i]);
+            assertGt(address(addresses[i]).balance, balancesEth[i]);
+        }
+    }
+
+    function testBulkBuysandRefundsForGas1() public {
+        address[] memory addresses = new address[](50);
+        for (uint256 i = 0; i < 50; i++) {
+            addresses[i] = address(uint160(uint256(keccak256(abi.encodePacked(i)))));
+            vm.deal(addresses[i], 1000 ether);
+        }
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 buyAmountForBulk = 100000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+        for (uint256 i = 0; i < 50; i++) {
+               vm.startPrank(addresses[i]);
+            uint256 buyAmountForBulk = 300000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            //assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+                for (uint256 i = 0; i < 50; i++) {
+               vm.startPrank(addresses[i]);
+            uint256 buyAmountForBulk = 300000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            //assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+
+
+        //refund all users
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 balanceBefore = address(addresses[i]).balance;
+            uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addresses[i]);
+            tTokenInstanceRefund.refund();
+            uint256 balanceAfter = address(addresses[i]).balance;
+            uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addresses[i]);
+            assertGt(balanceAfter, balanceBefore);
+            assertGt(tokenBalanceBefore, tokenBalanceAfter);
+            vm.stopPrank();
+        }
 
     }
+
+    function testOneUserBuysMultipleConsecutively() public {
+        address[] memory addresses = new address[](50);
+        for (uint256 i = 0; i < 50; i++) {
+            addresses[i] = address(uint160(uint256(keccak256(abi.encodePacked(i)))));
+            vm.deal(addresses[i], 1000 ether);
+        }
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 buyAmountForBulk = 100000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+        //only one user buys 50 times
+        for (uint256 i = 0; i < 50; i++) {
+            vm.startPrank(addresses[0]);
+            uint256 buyAmountForBulk = 300000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            //assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+
+        //refund all users
+        for (uint256 i = 1; i < 50; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 balanceBefore = address(addresses[i]).balance;
+            uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addresses[i]);
+            tTokenInstanceRefund.refund();
+            uint256 balanceAfter = address(addresses[i]).balance;
+            uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addresses[i]);
+            assertGt(balanceAfter, balanceBefore);
+            assertGt(tokenBalanceBefore, tokenBalanceAfter);
+            vm.stopPrank();
+        }
+
+        //address[0] refunds
+        vm.startPrank(addresses[0]);
+        uint256 balanceBefore = address(addresses[0]).balance;
+        uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addresses[0]);
+        tTokenInstanceRefund.refund();
+        uint256 balanceAfter = address(addresses[0]).balance;
+        uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addresses[0]);
+        assertGt(balanceAfter, balanceBefore);
+        assertGt(tokenBalanceBefore, tokenBalanceAfter);
+        vm.stopPrank();
+    }
+
+    function test1000UsersBuy() public {
+        address[] memory addresses = new address[](1000);
+        for (uint256 i = 0; i < 1000; i++) {
+            addresses[i] = address(uint160(uint256(keccak256(abi.encodePacked(i)))));
+            vm.deal(addresses[i], 1000 ether);
+        }
+        for (uint256 i = 0; i < 100; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 buyAmountForBulk = 100000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+        for (uint256 i = 0; i < 100; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 buyAmountForBulk = 100000;
+            uint256 cost = tTokenInstanceRefund.calculateCost(buyAmountForBulk);
+            uint256 tax = cost / 100;
+            uint256 slippage = 100;
+            uint256 totalCost = cost + tax;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmountForBulk, 100, totalCost);
+            //assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmountForBulk * 10 ** 18);
+            vm.stopPrank();
+        }
+        //refund all users
+        for (uint256 i = 0; i < 100; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 balanceBefore = address(addresses[i]).balance;
+            uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addresses[i]);
+            tTokenInstanceRefund.refund();
+            uint256 balanceAfter = address(addresses[i]).balance;
+            uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addresses[i]);
+            assertGt(balanceAfter, balanceBefore);
+            assertGt(tokenBalanceBefore, tokenBalanceAfter);
+            vm.stopPrank();
+        }
+    }
+
 
 
 }
