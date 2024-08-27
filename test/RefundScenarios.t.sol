@@ -66,7 +66,19 @@ contract RefundScenariosTest is Test {
         tTokenInstanceRefund = SuperMemeRefundableBondingCurve(
                 testToken
             );
+
+        degenbondingcurve = new SuperMemeDegenBondingCurve(
+            "SuperMeme",
+            "MEME",
+            false,
+            0,
+            owner,
+            address(0x123),
+            0,
+            0
+        );
         
+
         vm.stopPrank();
     }
 
@@ -82,6 +94,14 @@ contract RefundScenariosTest is Test {
         uint256 totalCost = cost + tax;
         tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(dummyBuyAmount, 100, totalCost);
         assertEq(tTokenInstanceRefund.balanceOf(addr1), dummyBuyAmount * 10 ** 18);
+        uint256 balanceBefore = address(addr1).balance;
+        uint256 tokenBalanceBefore = tTokenInstanceRefund.balanceOf(addr1);
+        tTokenInstanceRefund.refund();
+        uint256 balanceAfter = address(addr1).balance;
+        uint256 tokenBalanceAfter = tTokenInstanceRefund.balanceOf(addr1);
+        assertGt(balanceAfter, balanceBefore);
+        assertGt(tokenBalanceBefore, tokenBalanceAfter);
+        vm.stopPrank();
     }
 
     function testBuyerRefundsWithDifferentAmounts() public {
@@ -531,5 +551,42 @@ contract RefundScenariosTest is Test {
     }
 
 
+    function testEvrenCase() public {
+        vm.startPrank(addr1);
+            uint256 buyAmount = 1000;
+            uint256 cost = degenbondingcurve.calculateCost(buyAmount);
+            uint256 tax = cost / 100;
+            uint256 costWithTax = cost + tax;
+            uint256 slippage = cost / 100;
+            uint256 buyEth = costWithTax + slippage;
+
+            address newToken = factory.createToken{
+                value: createTokenRevenue + buyEth
+            }(
+                "SuperMeme",
+                "MEME",
+                false,
+                buyAmount,
+                address(addr1),
+                0,
+                buyEth,
+                1
+            );
+            SuperMemeRefundableBondingCurve newTokenInstance = SuperMemeRefundableBondingCurve(
+                    newToken
+                );
+        vm.stopPrank();
+        vm.startPrank(addr2);
+
+        newTokenInstance.buyTokens{value: buyEth}(buyAmount, 100, buyEth);
+        assertEq(newTokenInstance.balanceOf(addr2), buyAmount * 10 ** 18);
+        vm.stopPrank();
+        vm.startPrank(addr1);
+
+        newTokenInstance.refund();
+        assertEq(newTokenInstance.balanceOf(addr1), 0);
+        vm.stopPrank();
+
+    }
 
 }

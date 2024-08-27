@@ -4,8 +4,11 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./Interfaces/IUniswapV2Router02.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
+import "forge-std/console.sol";
+//import reentrancyGuard.sol
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract SuperMemeRefundableBondingCurve is ERC20 {
+contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
     uint256 public  MAX_SALE_SUPPLY = 1e9; // 1 billion tokens
     uint256 public constant TOTAL_ETHER = 4 ether;
     uint256 public MAXIMUM_TOTAL_ETHER = 4 ether;
@@ -95,7 +98,7 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         uint256 _amount,
         uint256 _slippage,
         uint256 _ethBuy
-    ) public payable {
+    ) public payable nonReentrant {
         require(!userRefunded[msg.sender], "Refunded");
         require(!bondingCurveCompleted, "Curve done");
         require(_amount > 0, "0 amount");
@@ -119,7 +122,6 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         if (excessEth > 0) {
             payable(buyer).transfer(excessEth);
         }
-
         buyCount += 1;
         buyIndex[buyCount] = buyer;
         buyCost[buyCount] = _ethBuy - tax;
@@ -167,7 +169,7 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         payable(revenueCollector).transfer(_tax);
         totalRevenueCollected += _tax;
     }
-    function sendToDex() public payable {
+    function sendToDex() public payable  {
         require(bondingCurveCompleted, "Curve not done");
         payTax(sendDexRevenue);
         totalEtherCollected -= sendDexRevenue;
@@ -184,10 +186,13 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         );
         emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
     }
-    function refund() public {
+    function refund() public nonReentrant {
+        require(userBuysPoints[msg.sender].length > 0, "No buy");
         require(!userRefunded[msg.sender], "Refunded");
         require(!bondingCurveCompleted, "Curve done");
         (uint256 toTheCurve, uint256 toBeDistributed) = calculateTokensRefund();
+        console.log("toTheCurve", toTheCurve);
+        console.log("toBeDistributed", toBeDistributed);
         require(
             balanceOf(msg.sender) >= (toTheCurve + toBeDistributed),
             "Low balance"
@@ -197,11 +202,9 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
             address(this).balance >= amountToBeRefundedEth,
             "Low ETH"
         );
-
         payTax((amountToBeRefundedEth * tradeTax) / tradeTaxDivisor);
         _burn(msg.sender, toTheCurve);
         _transfer(msg.sender, address(this), toBeDistributed);
-        
         uint256[] memory userBuyPoints = userBuysPoints[msg.sender];
         for (uint256 i = 0; i < userBuyPoints.length; i++) {
             
@@ -209,7 +212,6 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
             uint256 ethPaidByOtherUsersInBetween = cumulativeEthCollected[
                 buyCount
             ] - cumulativeEthCollected[buyPoint];
-            
             for (uint256 j = buyCount; j >= buyPoint; j--) {
                 if (buyIndex[j] == address(0)) {
                     break;
@@ -218,12 +220,13 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
                 } else if (buyIndex[j] == msg.sender) {
                     continue;
                 } else {
+                    //check if the user has already been refunded
                     uint256 refundAmountForInstance = (userBuyPointPercentages[
-                        msg.sender
+                        buyIndex[j]
                     ][i] * toBeDistributed) / buyPointScale;
+                    
                     uint256 refundAmountForUser = (buyCost[j] *
                         refundAmountForInstance) / ethPaidByOtherUsersInBetween;
-                        
                     _transfer(address(this), buyIndex[j], refundAmountForUser);
                 }
             }
@@ -248,7 +251,6 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
             msg.sender,
             price
         );
-
         emit Price(price, totalSup, address(this), toTheCurve);
     }
     function calculateTokensRefund() public view returns (uint256, uint256) {
@@ -260,9 +262,11 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
         uint256 newSupplyCubed = currentSupply ** 3 - supplyDifference;
         uint256 newSupply = cubeRoot(newSupplyCubed);
         uint256 _amount = currentSupply - newSupply;
+        console.log("amount", _amount);
+        console.log("userBalance", userBalance);
         if (_amount > userBalance) {
             _amount = userBalance;
-        }
+        } 
         uint256 amountToBeRedistributed = userBalance - _amount;
         return (_amount * 10 ** 18, amountToBeRedistributed * 10 ** 18);
     }
@@ -283,4 +287,23 @@ contract SuperMemeRefundableBondingCurve is ERC20 {
     function remainingTokens() public view returns (uint256) {
         return MAX_SALE_SUPPLY - scaledSupply;
     }
+
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    ) internal override(ERC20) {
+        if (bondingCurveCompleted) {
+            super._update(from, to, value);
+        } else {
+            if (from == address(this) || from == address(0)) {
+                super._update(from, to, value);
+            } else if (to == address(this) || to == address(0)) {
+                super._update(from, to, value);
+            } else {
+                revert("No transfer");
+            }
+        }
+    }
+
 }

@@ -74,6 +74,9 @@ contract BondingCurvePricingTest is Test {
                 testToken2
             );
 
+        //get the initial price
+        uint256 pricePerToken = testTokenInstanceDegen.calculateCost(1);
+        console.log("pricePerToken", pricePerToken);
         vm.stopPrank();
     }
 
@@ -104,9 +107,11 @@ contract BondingCurvePricingTest is Test {
             uint256 cost = testTokenInstanceRefund.calculateCost(amount);
             uint256 tax = cost / 100;
             uint256 totalCost = cost + tax;
+            vm.roll(block.number + 1);
             testTokenInstanceRefund.buyTokens{value: totalCost}(amount, 100, totalCost);
             uint256 pricePerToken = testTokenInstanceRefund.calculateCost(1);
             uint256 totalSupply = testTokenInstanceRefund.totalSupply();
+            //console.log("pricePerToken", pricePerToken);
         }
     }
 
@@ -117,10 +122,11 @@ contract BondingCurvePricingTest is Test {
             uint256 cost = testTokenInstanceDegen.calculateCost(amount);
             uint256 tax = cost / 100;
             uint256 totalCost = cost + tax;
+            vm.roll(block.number + 1);
             testTokenInstanceDegen.buyTokens{value: totalCost}(amount, 100, totalCost);
             uint256 pricePerToken = testTokenInstanceDegen.calculateCost(1);
             uint256 totalSupply = testTokenInstanceDegen.totalSupply();
-            //
+            //console.log("pricePerToken", pricePerToken);
             //
         }
         //
