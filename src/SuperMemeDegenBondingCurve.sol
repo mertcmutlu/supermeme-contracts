@@ -27,7 +27,6 @@ contract SuperMemeDegenBondingCurve is ERC20 {
         address indexed seller,
         uint256 totalSupply
     );
-
     uint256 public MAX_SALE_SUPPLY = 1e9; // 1 billion tokens
     uint256 public constant TOTAL_ETHER = 4 ether;
     uint256 public constant SCALE = 1e18; // Scaling factor
@@ -211,11 +210,9 @@ contract SuperMemeDegenBondingCurve is ERC20 {
             }
         }
     }
-
     function setUniRouter(address _uniswapV2Router) public {
         uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
     }
-
     function remainingTokens() public view returns (uint256) {
         return MAX_SALE_SUPPLY - scaledSupply;
     }

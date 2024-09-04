@@ -299,7 +299,7 @@ function testMultipleUsersRefundProcess() public {
         vm.stopPrank();
     }
     uint256 newSupply = tTokenInstanceRefund.totalSupply();
-    assertLt(newSupply, tTokenInstanceRefund.MAX_SALE_SUPPLY());
+    assertLt(newSupply, tTokenInstanceRefund.MAX_SALE_SUPPLY() ** 10 ** 18);
 }
 
 
