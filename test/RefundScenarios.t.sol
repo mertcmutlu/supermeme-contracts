@@ -3,7 +3,9 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "../src/SuperMemeDegenBondingCurve.sol";
 import "../src/SuperMemeRefundableBondingCurve.sol";
-import "../src/SuperMemeFactory.sol";
+import "../src/Factories/RefundableFactory.sol";
+import "../src/Factories/DegenFactory.sol";
+import "../src/Factories/SuperMemeRegistry.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 //import uniswap pair
 import {IUniswapV2Pair} from "../src/Interfaces/IUniswapV2Pair.sol";
@@ -15,8 +17,10 @@ contract RefundScenariosTest is Test {
     uint256 public dummyBuyAmount2 = 1000000;
     IUniswapV2Pair public pair;
     IUniswapFactory public unifactory;    
-    SuperMemeFactory public factory;
+    DegenFactory public degenFactory;
+    RefundableFactory public refundableFactory;
     SuperMemeDegenBondingCurve public degenbondingcurve;
+    SuperMemeRegistry public registry;
     uint256 public createTokenRevenue = 0.00001 ether;
     IUniswapV2Router02 public router;
     SuperMemeDegenBondingCurve public tTokenInstanceDegen;
@@ -49,18 +53,19 @@ contract RefundScenariosTest is Test {
 
 
         vm.startPrank(addr1);
-        factory = new SuperMemeFactory();
+        registry = new SuperMemeRegistry();
+        degenFactory = new DegenFactory(address(registry));
+        refundableFactory = new RefundableFactory(address(registry));
+        registry.setDegenFactory(address(degenFactory));
+        registry.setRefundableFactory(address(refundableFactory));
 
         
-        address testToken = factory.createToken{value: createTokenRevenue}(
+        address testToken = refundableFactory.createToken{value: createTokenRevenue}(
             "SuperMeme",
             "MEME",
-            false,
             0,
             address(addr1),
-            0,
-            0,
-            1
+            0
         );
         
         tTokenInstanceRefund = SuperMemeRefundableBondingCurve(
@@ -115,15 +120,12 @@ contract RefundScenariosTest is Test {
         amounts[6] = 799999999;
         for (uint256 i = 0; i < amounts.length; i++) {
             vm.startPrank(addr1);
-            address newToken = factory.createToken{value: createTokenRevenue}(
+            address newToken = refundableFactory.createToken{value: createTokenRevenue}(
                 "SuperMeme",
                 "MEME",
-                false,
                 0,
                 address(addr1),
-                0,
-                0,
-                1
+                0
             );
 
             tTokenInstanceRefund = SuperMemeRefundableBondingCurve(
@@ -560,17 +562,14 @@ contract RefundScenariosTest is Test {
             uint256 slippage = cost / 100;
             uint256 buyEth = costWithTax + slippage;
 
-            address newToken = factory.createToken{
+            address newToken = refundableFactory.createToken{
                 value: createTokenRevenue + buyEth
             }(
                 "SuperMeme",
                 "MEME",
-                false,
                 buyAmount,
                 address(addr1),
-                0,
-                buyEth,
-                1
+                buyEth
             );
             SuperMemeRefundableBondingCurve newTokenInstance = SuperMemeRefundableBondingCurve(
                     newToken
@@ -587,6 +586,14 @@ contract RefundScenariosTest is Test {
         assertEq(newTokenInstance.balanceOf(addr1), 0);
         vm.stopPrank();
 
+    }
+
+    function testRefundWithoutBuy() public {
+        vm.startPrank(addr1);
+        vm.expectRevert();
+        tTokenInstanceRefund.refund();
+        assertEq(tTokenInstanceRefund.balanceOf(addr1), 0);
+        vm.stopPrank();
     }
 
 }

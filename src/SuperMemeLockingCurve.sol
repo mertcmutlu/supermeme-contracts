@@ -5,9 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./Interfaces/IUniswapV2Router02.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
 import "forge-std/console.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract SuperMemeLockingCurve is ERC20 {
+//fix uniswap router address
+
+contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     event SentToDex(uint256 ethAmount, uint256 tokenAmount, uint256 timestamp);
+    event LockTime(address indexed useraddress, uint256 indexed lockTime);
     event Price(
         uint256 indexed price,
         uint256 indexed totalSupply,
@@ -43,8 +47,6 @@ contract SuperMemeLockingCurve is ERC20 {
     uint256 public scaledSupply;
 
     address public devAddress;
-    bool public devLocked;
-    uint256 public devLockTime;
 
     bool public bondingCurveCompleted;
     bool public scaledBondingCurveCompleted;
@@ -54,7 +56,7 @@ contract SuperMemeLockingCurve is ERC20 {
     uint256 public totalRevenueCollected;
     uint256 public sendDexRevenue = 0.15 ether;
 
-    uint256 public constant tMax = 3 days;
+    uint256 public tMax;
     mapping(address => uint256) public lockTime;
     uint256 public previousLockTime;
     uint256 public firstLockTime;
@@ -72,24 +74,23 @@ contract SuperMemeLockingCurve is ERC20 {
     constructor(
         string memory _name,
         string memory _symbol,
-        bool _devLocked,
         uint256 _amount,
         address _devAdress,
         address _revenueCollector,
-        uint256 _devLockDuration,
-        uint256 _buyEth
+        uint256 _buyEth,
+        uint256 _tMax
     ) public payable ERC20(_name, _symbol) {
+        tMax = _tMax;
         factoryContract = msg.sender;
         revenueCollector = _revenueCollector;
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
-            0x5633464856F58Dfa9a358AfAf49841FEE990e30b
+        uniswapV2Router = IUniswapV2Router02(
+            0x6682375ebC1dF04676c0c5050934272368e6e883
         );
-        uniswapV2Router = _uniswapV2Router;
+        //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
+        //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
         _mint(address(this), liquidityThreshold);
         scaledSupply = scaledLiquidityThreshold;
         devAddress = _devAdress;
-        devLocked = _devLocked;
-        devLockTime = block.timestamp + _devLockDuration;
         if (_amount > 0) {
             buyTokens(_amount, 100, _buyEth);
         }
@@ -98,10 +99,10 @@ contract SuperMemeLockingCurve is ERC20 {
         uint256 _amount,
         uint256 _slippage,
         uint256 _buyEth
-    ) public payable {
+    ) public payable nonReentrant {
         require(checkRemainingLockTime(msg.sender) == 0, "Already Bought In");
         require(_amount > 0, "0 amount");
-        require(!bondingCurveCompleted || !dexStage, "Curve done");
+        require(!bondingCurveCompleted && !dexStage, "Curve done");
 
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
@@ -109,13 +110,14 @@ contract SuperMemeLockingCurve is ERC20 {
         uint256 slippageAmount = (totalCost * _slippage) / 10000;
         uint256 minimumCost = totalCost - slippageAmount;
 
+        require(minimumCost <= msg.value, "Insufficient funds");
         require(
             _buyEth >= minimumCost && _buyEth <= totalCost + slippageAmount,
             "Slippage"
         );
         payTax(tax);
         uint256 excessEth = (_buyEth - totalCost > 0) ? _buyEth - totalCost : 0;
-        require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
+        //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
 
         totalEtherCollected += cost;
         scaledSupply += _amount;
@@ -125,7 +127,6 @@ contract SuperMemeLockingCurve is ERC20 {
         } else if (scaledSupply >= scaledBondingCurveThreshold) {
             scaledBondingCurveCompleted = true;
         }
-
         address buyer = (msg.sender == factoryContract)
             ? devAddress
             : msg.sender;
@@ -140,6 +141,7 @@ contract SuperMemeLockingCurve is ERC20 {
         calculateLockingDuration(buyer);
         emit tokensBought(_amount, cost, address(this), buyer, totalSup);
         emit Price(lastPrice, totalSup, address(this), _amount);
+        emit LockTime(buyer, lockTime[buyer]);
     }
 
     function calculateCost(uint256 amount) public view returns (uint256) {
@@ -150,11 +152,12 @@ contract SuperMemeLockingCurve is ERC20 {
         return cost;
     }
     function payTax(uint256 _tax) internal {
-        payable(revenueCollector).transfer(_tax);
+        (bool success, ) = revenueCollector.call{value: _tax, gas: 50000}("");
+        require(success, "Transfer failed");
         totalRevenueCollected += _tax;
     }
 
-    function sendToDex() public payable {
+    function sendToDex() public payable nonReentrant {
         require(
             bondingCurveCompleted || scaledBondingCurveCompleted,
             "Curve not done"
@@ -186,29 +189,30 @@ contract SuperMemeLockingCurve is ERC20 {
             for (uint256 i = 0; i < sendToDexVoters.length; i++) {
                 sendToDexVoters.pop();
             }
-
+            sendDexRevenue = (sendDexRevenue * scaledSupply) / MAX_SALE_SUPPLY;
             payTax(sendDexRevenue);
             totalEtherCollected -= sendDexRevenue;
             uint256 _ethAmount = totalEtherCollected;
             uint256 _tokenAmount = liquidityThreshold;
             _approve(address(this), address(uniswapV2Router), _tokenAmount);
+            console.log("sending to dex");
+            console.log(address(uniswapV2Router));
             uniswapV2Router.addLiquidityETH{value: _ethAmount}(
                 address(this),
                 _tokenAmount,
                 0,
                 0,
                 address(this),
-                block.timestamp
+                block.timestamp + 100
             );
             dexStage = true;
             emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
         }
     }
 
-    function sellTokens(uint256 _amount, uint256 _minimumEthRequired) public {
+    function sellTokens(uint256 _amount, uint256 _minimumEthRequired) public nonReentrant {
         require(_amount > 0, "0 amount");
         require(!bondingCurveCompleted || !dexStage, "Curve done");
-        console.log("inside sell");
         uint256 refund = calculateRefund(_amount);
         uint256 tax = (refund * tradeTax) / tradeTaxDivisor;
         uint256 netRefund = refund - tax;
@@ -217,16 +221,18 @@ contract SuperMemeLockingCurve is ERC20 {
         require(balanceOf(msg.sender) >= _amount * 10 ** 18, "Low tokens");
         require(netRefund >= _minimumEthRequired, "Low refund");
         payTax(tax);
-        console.log("after tax");
         _burn(msg.sender, _amount * 10 ** 18);
-        console.log("after burn");
         totalEtherCollected -= netRefund + tax;
         scaledSupply -= _amount;
 
         payable(msg.sender).transfer(netRefund);
-        if (scaledSupply < scaledBondingCurveThreshold) {
+        if (
+            scaledSupply < scaledBondingCurveThreshold &&
+            scaledBondingCurveCompleted
+        ) {
             scaledBondingCurveCompleted = false;
-            for (uint256 i = 0; i < sendToDexVoters.length; i++) {
+            for (uint256 i = 0; i <= sendToDexVoters.length; i++) {
+                console.log("popping");
                 sendToDexVoters.pop();
             }
         }
@@ -248,9 +254,6 @@ contract SuperMemeLockingCurve is ERC20 {
         address to,
         uint256 value
     ) internal override(ERC20) {
-        console.log("from", from);
-        console.log("to", to);
-
         if (
             (from != address(this) && from != address(0)) &&
             to == address(this) &&
@@ -258,9 +261,14 @@ contract SuperMemeLockingCurve is ERC20 {
         ) {
             revert("No transfer new");
         }
-        console.log("inside update");
         if (dexStage) {
-            super._update(from, to, value);
+            ("dexStage inside contract is true");
+            if (checkRemainingLockTime(from) == 0) {
+                ("lockTime is 0");
+                super._update(from, to, value);
+            } else {
+                revert("No transfer");
+            }
         } else {
             if (
                 from == address(this) || from == address(0) || to == address(0)
@@ -275,14 +283,9 @@ contract SuperMemeLockingCurve is ERC20 {
             }
         }
     }
-    function setUniRouter(address _uniswapV2Router) public {
-        uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
-    }
-
     function remainingTokens() public view returns (uint256) {
         return MAX_SALE_SUPPLY - scaledSupply;
     }
-
     function calculateLockingDuration(
         address _address
     ) public returns (uint256) {
@@ -290,7 +293,6 @@ contract SuperMemeLockingCurve is ERC20 {
             lockTime[_address] = 0;
             return lockTime[_address];
         }
-        console.log("previousLockTime inside contract", previousLockTime);
         if (previousLockTime == 0) {
             previousLockTime = tMax;
             lockTime[_address] = block.timestamp + tMax;
@@ -299,20 +301,19 @@ contract SuperMemeLockingCurve is ERC20 {
             return lockTime[_address];
         } else {
             uint256 timePassed = block.timestamp - firstLockTime;
-            if (timePassed > previousLockTime) {
-                previousLockTime = 0;
-            } else {
-                previousLockTime -= timePassed;
-            }
+            previousLockTime = (timePassed > previousLockTime)
+                ? 0
+                : previousLockTime - timePassed;
+
             uint256 newLockTime = previousLockTime;
             uint256 scaledReduction = (scaledSupply * previousLockTime) /
-                MAX_SALE_SUPPLY / 4;
-            if (scaledReduction > previousLockTime) {
-                newLockTime = 0;
-            } else {
-                newLockTime -= scaledReduction;
-            }
-            console.log("newLockTime inside contract", newLockTime);
+                MAX_SALE_SUPPLY /
+                4;
+
+            newLockTime = (scaledReduction > previousLockTime)
+                ? 0
+                : newLockTime - scaledReduction;
+
             if (firstLockTime + timePassed > block.timestamp + newLockTime) {
                 lockTime[_address] = 0;
                 return lockTime[_address];
@@ -329,7 +330,10 @@ contract SuperMemeLockingCurve is ERC20 {
             return 0;
         }
         if (lockTime[_address] != 0) {
-            return (lockTime[_address] - block.timestamp < 0) ? 0 : lockTime[_address] - block.timestamp;
+            return
+                (lockTime[_address] - block.timestamp < 0)
+                    ? 0
+                    : lockTime[_address] - block.timestamp;
         }
     }
 }

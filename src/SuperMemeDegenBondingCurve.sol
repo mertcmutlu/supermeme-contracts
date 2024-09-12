@@ -4,8 +4,10 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./Interfaces/IUniswapV2Router02.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "forge-std/console.sol";
 
-contract SuperMemeDegenBondingCurve is ERC20 {
+contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
     event SentToDex(uint256 ethAmount, uint256 tokenAmount, uint256 timestamp);
     event Price(
         uint256 indexed price,
@@ -67,10 +69,11 @@ contract SuperMemeDegenBondingCurve is ERC20 {
     ) public payable ERC20(_name, _symbol) {
         factoryContract = msg.sender;
         revenueCollector = _revenueCollector;
-        IUniswapV2Router02 _uniswapV2Router = IUniswapV2Router02(
-            0x5633464856F58Dfa9a358AfAf49841FEE990e30b
+        uniswapV2Router = IUniswapV2Router02(
+            0x6682375ebC1dF04676c0c5050934272368e6e883
         );
-        uniswapV2Router = _uniswapV2Router;
+        //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
+        //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
         _mint(address(this), liquidityThreshold);
         scaledSupply = scaledLiquidityThreshold;
         devAddress = _devAdress;
@@ -84,42 +87,42 @@ contract SuperMemeDegenBondingCurve is ERC20 {
         uint256 _amount,
         uint256 _slippage,
         uint256 _buyEth
-    ) public payable {
+    ) public payable nonReentrant {
         require(_amount > 0, "0 amount");
         require(!bondingCurveCompleted, "Curve done");
-        
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
         uint256 totalCost = cost + tax;
         uint256 slippageAmount = (totalCost * _slippage) / 10000;
         uint256 minimumCost = totalCost - slippageAmount;
-        
+        require(minimumCost <= msg.value, "Insufficient funds");
         require(
             _buyEth >= minimumCost && _buyEth <= totalCost + slippageAmount,
             "Slippage"
         );
         payTax(tax);
         uint256 excessEth = (_buyEth - totalCost > 0) ? _buyEth - totalCost : 0;
-        require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
-        
+        //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
         totalEtherCollected += cost;
         scaledSupply += _amount;
-
         if (scaledSupply >= MAX_SALE_SUPPLY) {
             bondingCurveCompleted = true;
         }
-        
         address buyer = (msg.sender == factoryContract) ? devAddress : msg.sender;
 
         if (excessEth > 0) {
             payable(buyer).transfer(excessEth);
         }
-        
         _mint(buyer, _amount * 10 ** 18);
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
+        uint256 remainingTokens = MAX_SALE_SUPPLY - scaledSupply;
         emit tokensBought(_amount, cost, address(this), buyer, totalSup);
         emit Price(lastPrice, totalSup, address(this), _amount);
+
+        if (bondingCurveCompleted) {
+            sendToDex();
+        }
     }
     
     function calculateCost(uint256 amount) public view returns (uint256) {
@@ -130,13 +133,15 @@ contract SuperMemeDegenBondingCurve is ERC20 {
         return cost;
     }
     function payTax(uint256 _tax) internal {
-        payable(revenueCollector).transfer(_tax);
+        (bool success, ) = revenueCollector.call{value: _tax, gas: 100000}("");
+        require(success, "Transfer failed");
         totalRevenueCollected += _tax;
     }
 
     function sendToDex() public payable {
         require(bondingCurveCompleted, "Curve not done");
         payTax(sendDexRevenue);
+        console.log("paid tax");
         totalEtherCollected -= sendDexRevenue;
         uint256 _ethAmount = totalEtherCollected;
         uint256 _tokenAmount = liquidityThreshold;
@@ -152,7 +157,7 @@ contract SuperMemeDegenBondingCurve is ERC20 {
         emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
     }
 
-    function sellTokens(uint256 _amount, uint256 _minimumEthRequired) public {
+    function sellTokens(uint256 _amount, uint256 _minimumEthRequired) public nonReentrant {
         require(!bondingCurveCompleted, "Curve done");
         
         uint256 refund = calculateRefund(_amount);
@@ -209,9 +214,6 @@ contract SuperMemeDegenBondingCurve is ERC20 {
                 revert("No transfer");
             }
         }
-    }
-    function setUniRouter(address _uniswapV2Router) public {
-        uniswapV2Router = IUniswapV2Router02(_uniswapV2Router);
     }
     function remainingTokens() public view returns (uint256) {
         return MAX_SALE_SUPPLY - scaledSupply;

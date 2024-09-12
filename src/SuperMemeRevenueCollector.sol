@@ -9,7 +9,6 @@ contract SuperMemeRevenueCollector is Ownable {
     ERC20 public mockToken;
     ERC721 public mockNFT;
 
-    uint256 public sprBalance;
     uint256 public totalEtherCollected;
     uint256 public nftShare;
     uint256 public lockDuration = 1 weeks;
@@ -31,12 +30,12 @@ contract SuperMemeRevenueCollector is Ownable {
     function distrubuteRevenue() public payable {}
 
     function collectNFTJackpot(uint256 _tokenId) public {
-        console.log("collectNFTJackpot");
+        ("collectNFTJackpot");
         require(
             mockNFT.ownerOf(_tokenId) == msg.sender,
             "NFT not owned by sender"
         );
-        console.log("passed ownerOf");
+        ("passed ownerOf");
         require(
             nftLocks[_tokenId] < block.timestamp || nftLocks[_tokenId] == 0,
             "NFT is locked"
@@ -62,5 +61,9 @@ contract SuperMemeRevenueCollector is Ownable {
 
     function setMockNFT(address _mockNFT) public onlyOwner {
         mockNFT = ERC721(_mockNFT);
+    }
+
+    function setLockDuration(uint256 _lockDuration) public onlyOwner {
+        lockDuration = _lockDuration;
     }
 }

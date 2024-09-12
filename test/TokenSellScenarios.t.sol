@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "../src/SuperMemeDegenBondingCurve.sol";
 import "../src/SuperMemeRefundableBondingCurve.sol";
-import "../src/SuperMemeFactory.sol";
+import "../src/Factories/DegenFactory.sol";
+import "../src/Factories/SuperMemeRegistry.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 //import uniswap pair
 import {IUniswapV2Pair} from "../src/Interfaces/IUniswapV2Pair.sol";
@@ -14,13 +15,14 @@ contract TokenSellScenarios is Test {
     uint256 public dummyBuyAmount2 = 1000000;
     IUniswapV2Pair public pair;
     IUniswapFactory public unifactory;    
-    SuperMemeFactory public factory;
     SuperMemeDegenBondingCurve public degenbondingcurve;
     uint256 public createTokenRevenue = 0.00001 ether;
     IUniswapV2Router02 public router;
+    SuperMemeRegistry public registry;
     SuperMemeDegenBondingCurve public testTokenInstanceDegen;
     SuperMemeRefundableBondingCurve public testTokenInstanceRefund;
     SuperMemeDegenBondingCurve public testTokenInstanceDevLock;
+    DegenFactory public factory;
     address public owner = address(0x123);
     address public addr1 = address(0x456);
     address public addr2 = address(0x789);
@@ -44,7 +46,9 @@ contract TokenSellScenarios is Test {
         vm.deal(addr1, 1000 ether);
         vm.deal(addr2, 1000 ether);
         vm.startPrank(addr1);
-        factory = new SuperMemeFactory();
+        registry = new SuperMemeRegistry();
+        factory = new DegenFactory(address(registry));
+        registry.setDegenFactory(address(factory));
         //Create a token
         address testToken = factory.createToken{value: createTokenRevenue}(
             "SuperMeme",
@@ -52,7 +56,6 @@ contract TokenSellScenarios is Test {
             false,
             0,
             address(addr1),
-            0,
             0,
             0
         );
@@ -74,8 +77,7 @@ contract TokenSellScenarios is Test {
             amount,
             address(addr1),
             1 weeks,
-            totalCostWithSlippage,
-            0
+            totalCostWithSlippage
         ); 
         testTokenInstanceDevLock = SuperMemeDegenBondingCurve(
                 testToken2
@@ -84,7 +86,7 @@ contract TokenSellScenarios is Test {
     }
 
     function testDeploy() public {
-        assertEq(factory.revenueCollector(), address(0x123));
+        assertEq(factory.revenueCollector(), address(0));
         assertEq(testTokenInstanceDegen.devAddress(), address(addr1));
         assertEq(testTokenInstanceDevLock.devLocked(), true);
     }

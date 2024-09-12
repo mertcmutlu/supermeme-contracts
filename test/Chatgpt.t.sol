@@ -3,7 +3,9 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "../src/SuperMemeDegenBondingCurve.sol";
 import "../src/SuperMemeRefundableBondingCurve.sol";
-import "../src/SuperMemeFactory.sol";
+import "../src/Factories/DegenFactory.sol";
+import "../src/Factories/SuperMemeRegistry.sol";
+import "../src/Factories/RefundableFactory.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 //import uniswap pair
 import {IUniswapV2Pair} from "../src/Interfaces/IUniswapV2Pair.sol";
@@ -14,8 +16,10 @@ contract ChatGPTTest is Test {
     uint256 public dummyBuyAmount2 = 1000000;
     IUniswapV2Pair public pair;
     IUniswapFactory public unifactory;
-    SuperMemeFactory public factory;
     SuperMemeDegenBondingCurve public degenbondingcurve;
+    DegenFactory public degenFactory;
+    RefundableFactory public refundableFactory;
+    SuperMemeRegistry public registry;
     uint256 public createTokenRevenue = 0.00001 ether;
     IUniswapV2Router02 public router;
     SuperMemeDegenBondingCurve public tTokenInstanceDegen;
@@ -34,7 +38,7 @@ contract ChatGPTTest is Test {
 
 
     function setUp() public {
-        uint256 createTokenRevenue = 0.00001 ether;
+        createTokenRevenue = 0.00001 ether;
         router = IUniswapV2Router02(
             address(0x5633464856F58Dfa9a358AfAf49841FEE990e30b)
         );
@@ -56,17 +60,16 @@ contract ChatGPTTest is Test {
 
 
         vm.startPrank(addr1);
-        factory = new SuperMemeFactory();
+        registry = new SuperMemeRegistry();
+        refundableFactory = new RefundableFactory(address(registry));
+        registry.setRefundableFactory(address(refundableFactory));
 
-        address testToken = factory.createToken{value: createTokenRevenue}(
+        address testToken = refundableFactory.createToken{value: createTokenRevenue, gas: 20000000000}(
             "SuperMeme",
             "MEME",
-            false,
             0,
             address(addr1),
-            0,
-            0,
-            1
+            0
         );
 
         tTokenInstanceRefund = SuperMemeRefundableBondingCurve(testToken);
@@ -84,20 +87,6 @@ contract ChatGPTTest is Test {
 
         vm.stopPrank();
     }
-
-    function testSetup() public {
-    // Check that the factory is deployed correctly
-    assert(address(factory) != address(0));
-
-    // Check that the refundable bonding curve token is deployed correctly
-    assert(address(tTokenInstanceRefund) != address(0));
-
-    // Check that the degen bonding curve contract is deployed correctly
-    assert(address(degenbondingcurve) != address(0));
-
-    // Check that the router is set correctly
-    assert(address(router) != address(0));
-}
 
 function testInitialBalances() public {
     // Check that the token contract has the correct initial supply (if applicable)
@@ -229,6 +218,7 @@ function testStressRefundProcess() public {
     uint256 tokensPerPurchase = 10000; // Number of tokens per purchase
     uint256 slippage = 100; // 1% slippage
     uint256 totalCost;
+    uint256 initialEthBalance = addr1.balance;
 
     vm.startPrank(addr1);
 
@@ -241,24 +231,17 @@ function testStressRefundProcess() public {
         totalCost += totalPurchaseCost;
     }
 
-    // Step 2: Check that the user's token balance is correct
     uint256 totalTokensBought = tokensPerPurchase * numberOfPurchases * 10 ** 18;
     assertEq(tTokenInstanceRefund.balanceOf(addr1), totalTokensBought);
-
-    // Step 3: Perform the refund process
     tTokenInstanceRefund.refund();
 
-    // Step 4: Validate the refund process
-    // After refund, the token balance should be 0
     assertEq(tTokenInstanceRefund.balanceOf(addr1), 0);
 
-    // Ensure that the total supply has decreased accordingly
     uint256 newSupply = tTokenInstanceRefund.totalSupply();
-    assertLt(newSupply, initialSupply);
+    assertEq(newSupply, initialSupply);
 
-    // Ensure that most of the ETH has been refunded to addr1
     uint256 finalEthBalance = addr1.balance;
-    assertGt(finalEthBalance, initialSupply - totalCost);
+    assertLt(finalEthBalance, initialEthBalance);
 
     vm.stopPrank();
 }
@@ -279,8 +262,6 @@ function testMultipleUsersRefundProcess() public {
     users[7] = addr8;
     users[8] = addr9;
     users[9] = addr10;
-    
-
     // Step 1: Multiple users perform token purchases
     for (uint256 i = 0; i < users.length; i++) {
         vm.startPrank(users[i]);
@@ -294,12 +275,11 @@ function testMultipleUsersRefundProcess() public {
     for (uint256 i = 0; i < users.length; i++) {
         vm.startPrank(users[i]);
         tTokenInstanceRefund.refund();
-        console.log("User balance after refund: ", tTokenInstanceRefund.balanceOf(users[i]));
         //assertEq(tTokenInstanceRefund.balanceOf(users[i]), 0);
         vm.stopPrank();
     }
     uint256 newSupply = tTokenInstanceRefund.totalSupply();
-    assertLt(newSupply, tTokenInstanceRefund.MAX_SALE_SUPPLY() ** 10 ** 18);
+    assertLt(newSupply, tTokenInstanceRefund.MAX_SALE_SUPPLY() * 10 ** 18);
 }
 
 

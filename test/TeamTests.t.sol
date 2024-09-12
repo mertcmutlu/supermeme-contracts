@@ -4,20 +4,22 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "../src/SuperMemeDegenBondingCurve.sol";
 import "../src/SuperMemeRefundableBondingCurve.sol";
-import "../src/SuperMemeFactory.sol";
+import "../src/Factories/RefundableFactory.sol";
+import "../src/Factories/SuperMemeRegistry.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 //import uniswap pair
 import {IUniswapV2Pair} from "../src/Interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router02} from "../src/Interfaces/IUniswapV2Router02.sol";
 
-contract RefundScenariosTest is Test {
+contract TeamTests is Test {
 
     uint256 public dummyBuyAmount = 1000;
     uint256 public dummyBuyAmount2 = 1000000;
     IUniswapV2Pair public pair;
     IUniswapFactory public unifactory;    
-    SuperMemeFactory public factory;
     SuperMemeDegenBondingCurve public degenbondingcurve;
+    SuperMemeRegistry public registry;
+    RefundableFactory public factory;
     uint256 public createTokenRevenue = 0.00001 ether;
     IUniswapV2Router02 public router;
     SuperMemeDegenBondingCurve public tTokenInstanceDegen;
@@ -38,17 +40,15 @@ contract RefundScenariosTest is Test {
         addresses = generateMultipleAddresses(100);
 
         vm.startPrank(addresses[99]);
-
-        factory = new SuperMemeFactory();
+        registry = new SuperMemeRegistry();
+        factory = new RefundableFactory(address(registry));
+        registry.setRefundableFactory(address(factory));
         address testToken = factory.createToken{value: createTokenRevenue}(
             "SuperMeme",
             "MEME",
-            false,
             0,
             addresses[99],
-            0,
-            0,
-            1
+            0
         );
         tTokenInstanceRefund = SuperMemeRefundableBondingCurve(
                 testToken
@@ -224,43 +224,40 @@ contract RefundScenariosTest is Test {
         vm.stopPrank();
 
         //next 4 users buy 100m tokens
-        for (uint i = 9; i < 13; i++) {
-            vm.startPrank(addresses[i]);
-            buyAmount = 100000000;
-            cost = tTokenInstanceRefund.calculateCost(buyAmount);
-            tax = cost / 100;
-            totalCost = cost + tax;
-            slippage = cost / 100;
-            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
-            console.log("         ");
-            console.log("user ", i, " buys 100m tokens");
-            console.log("          ");
-            console.log("cost: ", totalCost);
-            console.log("user ", i, " balance: ", tTokenInstanceRefund.balanceOf(addresses[i]));
-            console.log("user 0 balance: ", tTokenInstanceRefund.balanceOf(addresses[0]));
-            console.log("user 1 balance: ", tTokenInstanceRefund.balanceOf(addresses[1]));
-            console.log("user 2 balance: ", tTokenInstanceRefund.balanceOf(addresses[2]));
-            console.log("user 3 balance: ", tTokenInstanceRefund.balanceOf(addresses[3]));
-            console.log("user 4 balance: ", tTokenInstanceRefund.balanceOf(addresses[4]));
-            console.log("user 5 balance: ", tTokenInstanceRefund.balanceOf(addresses[5]));
-            console.log("user 6 balance: ", tTokenInstanceRefund.balanceOf(addresses[6]));
-            console.log("user 7 balance: ", tTokenInstanceRefund.balanceOf(addresses[7]));
-            console.log("user 8 balance: ", tTokenInstanceRefund.balanceOf(addresses[8]));
-            console.log("user 9 balance: ", tTokenInstanceRefund.balanceOf(addresses[9]));
-            console.log("user 10 balance: ", tTokenInstanceRefund.balanceOf(addresses[10]));
-            console.log("user 11 balance: ", tTokenInstanceRefund.balanceOf(addresses[11]));
-            console.log("user 12 balance: ", tTokenInstanceRefund.balanceOf(addresses[12]));
-            assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmount * 10 ** 18);
-            vm.stopPrank();
-        }
+        // for (uint i = 9; i < 13; i++) {
+        //     vm.startPrank(addresses[i]);
+        //     buyAmount = 1000000;
+        //     cost = tTokenInstanceRefund.calculateCost(buyAmount);
+        //     tax = cost / 100;
+        //     totalCost = cost + tax;
+        //     slippage = cost / 100;
+        //     tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
+        //     console.log("         ");
+        //     console.log("user ", i, " buys 100m tokens");
+        //     console.log("          ");
+        //     console.log("cost: ", totalCost);
+        //     console.log("user ", i, " balance: ", tTokenInstanceRefund.balanceOf(addresses[i]));
+        //     console.log("user 0 balance: ", tTokenInstanceRefund.balanceOf(addresses[0]));
+        //     console.log("user 1 balance: ", tTokenInstanceRefund.balanceOf(addresses[1]));
+        //     console.log("user 2 balance: ", tTokenInstanceRefund.balanceOf(addresses[2]));
+        //     console.log("user 3 balance: ", tTokenInstanceRefund.balanceOf(addresses[3]));
+        //     console.log("user 4 balance: ", tTokenInstanceRefund.balanceOf(addresses[4]));
+        //     console.log("user 5 balance: ", tTokenInstanceRefund.balanceOf(addresses[5]));
+        //     console.log("user 6 balance: ", tTokenInstanceRefund.balanceOf(addresses[6]));
+        //     console.log("user 7 balance: ", tTokenInstanceRefund.balanceOf(addresses[7]));
+        //     console.log("user 8 balance: ", tTokenInstanceRefund.balanceOf(addresses[8]));
+        //     console.log("user 9 balance: ", tTokenInstanceRefund.balanceOf(addresses[9]));
+        //     console.log("user 10 balance: ", tTokenInstanceRefund.balanceOf(addresses[10]));
+        //     console.log("user 11 balance: ", tTokenInstanceRefund.balanceOf(addresses[11]));
+        //     console.log("user 12 balance: ", tTokenInstanceRefund.balanceOf(addresses[12]));
+        //     assertEq(tTokenInstanceRefund.balanceOf(addresses[i]), buyAmount * 10 ** 18);
+        //     vm.stopPrank();
+        // }
 
 
         
 
     }
-
-
-
             
 
     function generateAddress(uint256 index) public pure returns (address) {

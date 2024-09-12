@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
-import "./SuperMemeDegenBondingCurve.sol";
-import "./SuperMemeRefundableBondingCurve.sol";
+import "../SuperMemeDegenBondingCurve.sol";
+import "../SuperMemeRefundableBondingCurve.sol";
+import "../SuperMemeLockingCurve.sol";
 
 library SuperMemeFactoryLib {
 
@@ -16,7 +17,8 @@ library SuperMemeFactoryLib {
 
     enum TokenType {
         DegenBondingCurve,
-        SuperMemeRefundableBondingCurve
+        SuperMemeRefundableBondingCurve,
+        SuperMemeLockingCurve
     }
 
     function createToken(
@@ -135,6 +137,44 @@ library SuperMemeFactoryLib {
                     _buyEth
                 )
             );
+        } else if (
+            _tokenType == uint256(TokenType.SuperMemeLockingCurve) &&
+            !_devLocked &&
+            _amount == 0 &&
+            _devLockDuration == 0 &&
+            _buyEth == 0
+        ) {
+            token = address(
+                new SuperMemeLockingCurve(
+                    _name,
+                    _symbol,
+                    _amount,
+                    _devAddress,
+                    revenueCollector,
+                    _buyEth,
+                    0
+                )
+            );
+        } else if (
+            _tokenType == uint256(TokenType.SuperMemeLockingCurve) &&
+            !_devLocked &&
+            _amount > 0 &&
+            _devLockDuration == 0 &&
+            _buyEth > 0
+        ) {
+            token = address(
+                new SuperMemeLockingCurve{value: _buyEth}(
+                    _name,
+                    _symbol,
+                    _amount,
+                    _devAddress,
+                    revenueCollector,
+                    _buyEth,
+                    0
+                )
+            );
+        } else {
+            revert("Invalid token creation parameters");
         }
         emit TokenCreated(
             token,
