@@ -23,7 +23,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         uint256 cost,
         address indexed tokenAddress,
         address indexed buyer,
-        uint256 totalSupply
+        uint256 lockTime
     );
     event tokensSold(
         uint256 indexed amount,
@@ -139,9 +139,8 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
         calculateLockingDuration(buyer);
-        emit tokensBought(_amount, cost, address(this), buyer, totalSup);
+        emit tokensBought(_amount, cost, address(this), buyer, lockTime[buyer]);
         emit Price(lastPrice, totalSup, address(this), _amount);
-        emit LockTime(buyer, lockTime[buyer]);
     }
 
     function calculateCost(uint256 amount) public view returns (uint256) {
