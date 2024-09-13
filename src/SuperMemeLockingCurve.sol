@@ -118,7 +118,11 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         payTax(tax);
         uint256 excessEth = (_buyEth - totalCost > 0) ? _buyEth - totalCost : 0;
         //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
+                address buyer = (msg.sender == factoryContract)
+            ? devAddress
+            : msg.sender;
 
+        calculateLockingDuration(buyer);
         totalEtherCollected += cost;
         scaledSupply += _amount;
 
@@ -127,9 +131,6 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         } else if (scaledSupply >= scaledBondingCurveThreshold) {
             scaledBondingCurveCompleted = true;
         }
-        address buyer = (msg.sender == factoryContract)
-            ? devAddress
-            : msg.sender;
 
         if (excessEth > 0) {
             payable(buyer).transfer(excessEth);
@@ -138,7 +139,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         _mint(buyer, _amount * 10 ** 18);
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
-        calculateLockingDuration(buyer);
+        
         emit tokensBought(_amount, cost, address(this), buyer, lockTime[buyer]);
         emit Price(lastPrice, totalSup, address(this), _amount);
     }
@@ -287,7 +288,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     }
     function calculateLockingDuration(
         address _address
-    ) public returns (uint256) {
+    ) internal returns (uint256) {
         if (allLocksExpire != 0 && allLocksExpire < block.timestamp) {
             lockTime[_address] = 0;
             return lockTime[_address];
@@ -305,6 +306,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
                 : previousLockTime - timePassed;
 
             uint256 newLockTime = previousLockTime;
+            console.log("first newLockTime", newLockTime);
             uint256 scaledReduction = (scaledSupply * previousLockTime) /
                 MAX_SALE_SUPPLY /
                 4;
@@ -312,7 +314,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             newLockTime = (scaledReduction > previousLockTime)
                 ? 0
                 : newLockTime - scaledReduction;
-
+            console.log("newLockTime", newLockTime);
             if (firstLockTime + timePassed > block.timestamp + newLockTime) {
                 lockTime[_address] = 0;
                 return lockTime[_address];
@@ -335,4 +337,39 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
                     : lockTime[_address] - block.timestamp;
         }
     }
+
+    function calculateNextLockTime() public view returns (uint256) {
+    if (allLocksExpire != 0 && allLocksExpire < block.timestamp) {
+        return 0;
+    }
+
+    uint256 tempPreviousLockTime = previousLockTime;
+    uint256 tempFirstLockTime = firstLockTime;
+    uint256 tempAllLocksExpire = allLocksExpire;
+
+    if (tempPreviousLockTime == 0) {
+        return block.timestamp + tMax;
+    } else {
+        uint256 timePassed = block.timestamp - tempFirstLockTime;
+        tempPreviousLockTime = (timePassed > tempPreviousLockTime)
+            ? 0
+            : tempPreviousLockTime - timePassed;
+
+        uint256 newLockTime = tempPreviousLockTime;
+        console.log("first newLockTime", newLockTime);
+        uint256 scaledReduction = (scaledSupply * tempPreviousLockTime) /
+            MAX_SALE_SUPPLY /
+            4;
+
+        newLockTime = (scaledReduction > tempPreviousLockTime)
+            ? 0
+            : newLockTime - scaledReduction;
+        console.log("newLockTime", newLockTime);
+        if (tempFirstLockTime + timePassed > block.timestamp + newLockTime) {
+            return 0;
+        }
+
+        return block.timestamp + newLockTime;
+    }
+}
 }
