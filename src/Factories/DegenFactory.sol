@@ -5,6 +5,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "forge-std/console.sol";
 import "../Interfaces/ISuperMemeRegistry.sol";
 
+/*
+   ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
+  ███    ███ ███    ███   ███    ███   ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ 
+  ███    █▀  ███    ███   ███    ███   ███    █▀    ███    ███ ███   ███   ███   ███    █▀  ███   ███   ███   ███    █▀  
+  ███        ███    ███   ███    ███  ▄███▄▄▄      ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███   ███   ███  ▄███▄▄▄     
+▀███████████ ███    ███ ▀█████████▀  ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███   ███   ███ ▀▀███▀▀▀     
+         ███ ███    ███   ███          ███    █▄  ▀███████████ ███   ███   ███   ███    █▄  ███   ███   ███   ███    █▄  
+   ▄█    ███ ███    ███   ███          ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ███   ███   ███    ███ 
+ ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███  ▀█   ███   █▀    ██████████  ▀█   ███   █▀    ██████████ 
+                                                    ███    ███                                                           
+*/
+
 contract DegenFactory  is Ownable  {
 
     event TokenCreated(
@@ -34,8 +46,7 @@ contract DegenFactory  is Ownable  {
         uint256 _devLockDuration,
         uint256 _buyEth
     ) public payable returns (address token) {
-        ("createTokenRevenue: ", createTokenRevenue);
-        ("msg.value: ", msg.value);
+
         require(msg.value >= createTokenRevenue, "Insufficient funds");
         require(
             _devLockDuration == 0 ||
@@ -48,7 +59,7 @@ contract DegenFactory  is Ownable  {
         require(_devAddress == msg.sender, "Invalid dev address");
 
         (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 50000}("");
-require(success, "Transfer failed");
+        require(success, "Transfer failed");
 
         if (
             !_devLocked &&

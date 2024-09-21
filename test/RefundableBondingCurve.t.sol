@@ -49,8 +49,9 @@ contract RefundableBondingCurveTest is Test {
         degenFactory = new DegenFactory(address(registry));
         refundableFactory = new RefundableFactory(address(registry));
 
-        registry.setDegenFactory(address(degenFactory));
-        registry.setRefundableFactory(address(refundableFactory));
+        registry.setFactory(address(degenFactory));
+        registry.setFactory(address(refundableFactory));
+        
 
         degenbondingcurve = SuperMemeDegenBondingCurve(degenFactory.createToken{value: createTokenRevenue}("name", "symbol", false,0, owner, 0, 0));
         refundableBondingCurve = SuperMemeRefundableBondingCurve(refundableFactory.createToken{value: createTokenRevenue}("name", "symbol", 0, owner, 0));
@@ -60,7 +61,7 @@ contract RefundableBondingCurveTest is Test {
     function test_createToken() public {
         assertEq(refundableBondingCurve.scaledSupply(),200000000);   
     }
-    function testCompleteCurve() public {
+    function testCompleteCurveRefundable() public {
         uint256 amount = 800000000;
         vm.startPrank(addr1);
             uint256 cost = refundableBondingCurve.calculateCost(amount);
@@ -77,7 +78,7 @@ contract RefundableBondingCurveTest is Test {
             assertEq(refundableBondingCurve.bondingCurveCompleted(), true);
     }
 
-    function testCompleteCurveBuy() public {
+    function testCompleteCurveBuyRefundable() public {
         uint256 amount = 800000000;
         vm.startPrank(addr1);
             uint256 cost = refundableBondingCurve.calculateCost(amount);
@@ -104,7 +105,7 @@ contract RefundableBondingCurveTest is Test {
         vm.stopPrank();
     }
 
-    function testCompleteCurveTrade() public {
+    function testCompleteCurveTradeRefundable() public {
         uint256 amount = 800000000;
         vm.startPrank(addr1);
             uint256 cost = refundableBondingCurve.calculateCost(amount);

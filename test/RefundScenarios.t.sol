@@ -56,8 +56,9 @@ contract RefundScenariosTest is Test {
         registry = new SuperMemeRegistry();
         degenFactory = new DegenFactory(address(registry));
         refundableFactory = new RefundableFactory(address(registry));
-        registry.setDegenFactory(address(degenFactory));
-        registry.setRefundableFactory(address(refundableFactory));
+        registry.setFactory(address(degenFactory));
+        registry.setFactory(address(refundableFactory));
+        
 
         
         address testToken = refundableFactory.createToken{value: createTokenRevenue}(

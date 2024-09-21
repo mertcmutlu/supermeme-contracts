@@ -8,6 +8,18 @@ import "forge-std/console.sol";
 //import reentrancyGuard.sol
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+/*
+   ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
+  ███    ███ ███    ███   ███    ███   ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ 
+  ███    █▀  ███    ███   ███    ███   ███    █▀    ███    ███ ███   ███   ███   ███    █▀  ███   ███   ███   ███    █▀  
+  ███        ███    ███   ███    ███  ▄███▄▄▄      ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███   ███   ███  ▄███▄▄▄     
+▀███████████ ███    ███ ▀█████████▀  ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███   ███   ███ ▀▀███▀▀▀     
+         ███ ███    ███   ███          ███    █▄  ▀███████████ ███   ███   ███   ███    █▄  ███   ███   ███   ███    █▄  
+   ▄█    ███ ███    ███   ███          ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ███   ███   ███    ███ 
+ ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███  ▀█   ███   █▀    ██████████  ▀█   ███   █▀    ██████████ 
+                                                    ███    ███                                                           
+*/
+
 contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
     uint256 public MAX_SALE_SUPPLY = 1e9; // 1 billion tokens
     uint256 public constant TOTAL_ETHER = 4 ether;
@@ -194,11 +206,9 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
     }
     function refund() public nonReentrant {
-        ("Refund");
         require(userBuysPoints[msg.sender].length > 0, "No buy");
         require(!userRefunded[msg.sender], "Refunded");
         require(!bondingCurveCompleted, "Curve done");
-        ("Refunding");
         (uint256 toTheCurve, uint256 toBeDistributed) = calculateTokensRefund();
         require(
             balanceOf(msg.sender) >= (toTheCurve + toBeDistributed),
@@ -206,8 +216,8 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         );
         uint256 amountToBeRefundedEth = totalEthPaidUser[msg.sender];
         require(address(this).balance >= amountToBeRefundedEth, "Low ETH");
-        payTax((amountToBeRefundedEth * tradeTax) / tradeTaxDivisor);
-        ("to the curve", toTheCurve);
+        uint256 tax = (amountToBeRefundedEth * tradeTax) / tradeTaxDivisor;
+        payTax(tax);
         _burn(msg.sender, toTheCurve);
         _transfer(msg.sender, address(this), toBeDistributed);
         uint256[] memory userBuyPoints = userBuysPoints[msg.sender];
@@ -240,19 +250,16 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
                     _transfer(address(this), buyIndex[j], refundAmountForUser);
                 }
             }
-            MAX_SALE_SUPPLY -= toBeDistributed / 10 ** 18;
-            ("Required tokens for bonding curve", MAX_SALE_SUPPLY);
+            
             userRefunded[msg.sender] = true;
         }
-        uint256 finalRefundAmount = (amountToBeRefundedEth -
-            (amountToBeRefundedEth * tradeTax) /
-            tradeTaxDivisor);
+        MAX_SALE_SUPPLY -= toBeDistributed / 10 ** 18;
+        uint256 finalRefundAmount = (amountToBeRefundedEth - tax);
         payable(msg.sender).transfer(finalRefundAmount);
 
         totalEtherCollected -= amountToBeRefundedEth;
         totalRefundedTokens += toTheCurve;
         scaledSupply -= toTheCurve / 10 ** 18;
-        MAXIMUM_TOTAL_ETHER -= amountToBeRefundedEth;
         uint256 totalSup = totalSupply();
         uint256 price = calculateCost(1);
         emit tokensRefunded(
@@ -273,8 +280,7 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         uint256 newSupplyCubed = currentSupply ** 3 - supplyDifference;
         uint256 newSupply = cubeRoot(newSupplyCubed);
         uint256 _amount = currentSupply - newSupply;
-        ("amount", _amount);
-        ("userBalance", userBalance);
+
         if (_amount > userBalance) {
             _amount = userBalance;
         }

@@ -6,9 +6,17 @@ import "./Interfaces/IUniswapV2Router02.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-
-//fix uniswap router address
-
+/*
+   ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
+  ███    ███ ███    ███   ███    ███   ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ 
+  ███    █▀  ███    ███   ███    ███   ███    █▀    ███    ███ ███   ███   ███   ███    █▀  ███   ███   ███   ███    █▀  
+  ███        ███    ███   ███    ███  ▄███▄▄▄      ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███   ███   ███  ▄███▄▄▄     
+▀███████████ ███    ███ ▀█████████▀  ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███   ███   ███ ▀▀███▀▀▀     
+         ███ ███    ███   ███          ███    █▄  ▀███████████ ███   ███   ███   ███    █▄  ███   ███   ███   ███    █▄  
+   ▄█    ███ ███    ███   ███          ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ███   ███   ███    ███ 
+ ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███  ▀█   ███   █▀    ██████████  ▀█   ███   █▀    ██████████ 
+                                                    ███    ███                                                           
+*/
 contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     event SentToDex(uint256 ethAmount, uint256 tokenAmount, uint256 timestamp);
     event LockTime(address indexed useraddress, uint256 indexed lockTime);
@@ -116,8 +124,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             "Slippage"
         );
         payTax(tax);
-        uint256 excessEth = (_buyEth - totalCost > 0) ? _buyEth - totalCost : 0;
-        //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
+        uint256 excessEth = (_buyEth > totalCost) ? _buyEth - totalCost : 0;
                 address buyer = (msg.sender == factoryContract)
             ? devAddress
             : msg.sender;
@@ -128,6 +135,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
 
         if (scaledSupply >= MAX_SALE_SUPPLY) {
             bondingCurveCompleted = true;
+            _amount = MAX_SALE_SUPPLY - (scaledSupply - _amount);
         } else if (scaledSupply >= scaledBondingCurveThreshold) {
             scaledBondingCurveCompleted = true;
         }
@@ -212,17 +220,16 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
 
     function sellTokens(uint256 _amount, uint256 _minimumEthRequired) public nonReentrant {
         require(_amount > 0, "0 amount");
-        require(!bondingCurveCompleted || !dexStage, "Curve done");
+        require(!bondingCurveCompleted && !dexStage, "Curve done");
         uint256 refund = calculateRefund(_amount);
         uint256 tax = (refund * tradeTax) / tradeTaxDivisor;
         uint256 netRefund = refund - tax;
-
         require(address(this).balance >= netRefund, "Low ETH");
         require(balanceOf(msg.sender) >= _amount * 10 ** 18, "Low tokens");
-        require(netRefund >= _minimumEthRequired, "Low refund");
+        require(netRefund >= _minimumEthRequired,   "Slippage");
         payTax(tax);
         _burn(msg.sender, _amount * 10 ** 18);
-        totalEtherCollected -= netRefund + tax;
+        totalEtherCollected -= (netRefund + tax);
         scaledSupply -= _amount;
 
         payable(msg.sender).transfer(netRefund);
@@ -231,10 +238,6 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             scaledBondingCurveCompleted
         ) {
             scaledBondingCurveCompleted = false;
-            for (uint256 i = 0; i <= sendToDexVoters.length; i++) {
-                console.log("popping");
-                sendToDexVoters.pop();
-            }
         }
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
@@ -262,9 +265,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             revert("No transfer new");
         }
         if (dexStage) {
-            ("dexStage inside contract is true");
             if (checkRemainingLockTime(from) == 0) {
-                ("lockTime is 0");
                 super._update(from, to, value);
             } else {
                 revert("No transfer");
@@ -293,7 +294,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             lockTime[_address] = 0;
             return lockTime[_address];
         }
-        if (previousLockTime == 0) {
+        if (previousLockTime == 0 && allLocksExpire == 0) {
             previousLockTime = tMax;
             lockTime[_address] = block.timestamp + tMax;
             firstLockTime = block.timestamp;
@@ -306,15 +307,13 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
                 : previousLockTime - timePassed;
 
             uint256 newLockTime = previousLockTime;
-            console.log("first newLockTime", newLockTime);
             uint256 scaledReduction = (scaledSupply * previousLockTime) /
-                MAX_SALE_SUPPLY /
+                (MAX_SALE_SUPPLY*4) /
                 4;
 
             newLockTime = (scaledReduction > previousLockTime)
                 ? 0
                 : newLockTime - scaledReduction;
-            console.log("newLockTime", newLockTime);
             if (firstLockTime + timePassed > block.timestamp + newLockTime) {
                 lockTime[_address] = 0;
                 return lockTime[_address];
@@ -327,14 +326,16 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     function checkRemainingLockTime(
         address _address
     ) public view returns (uint256) {
-        if (allLocksExpire != 0 && allLocksExpire < block.timestamp) {
+        if (allLocksExpire != 0 && allLocksExpire <= block.timestamp) {
             return 0;
         }
         if (lockTime[_address] != 0) {
             return
-                (lockTime[_address] - block.timestamp < 0)
+                (lockTime[_address] < block.timestamp)
                     ? 0
                     : lockTime[_address] - block.timestamp;
+        } else {
+            return 0;
         }
     }
 
@@ -342,12 +343,11 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     if (allLocksExpire != 0 && allLocksExpire < block.timestamp) {
         return 0;
     }
-
     uint256 tempPreviousLockTime = previousLockTime;
     uint256 tempFirstLockTime = firstLockTime;
     uint256 tempAllLocksExpire = allLocksExpire;
 
-    if (tempPreviousLockTime == 0) {
+    if (tempPreviousLockTime == 0 && tempAllLocksExpire == 0) {
         return block.timestamp + tMax;
     } else {
         uint256 timePassed = block.timestamp - tempFirstLockTime;
@@ -356,15 +356,13 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             : tempPreviousLockTime - timePassed;
 
         uint256 newLockTime = tempPreviousLockTime;
-        console.log("first newLockTime", newLockTime);
         uint256 scaledReduction = (scaledSupply * tempPreviousLockTime) /
-            MAX_SALE_SUPPLY /
+            (MAX_SALE_SUPPLY*4) /
             4;
 
         newLockTime = (scaledReduction > tempPreviousLockTime)
             ? 0
             : newLockTime - scaledReduction;
-        console.log("newLockTime", newLockTime);
         if (tempFirstLockTime + timePassed > block.timestamp + newLockTime) {
             return 0;
         }
@@ -372,4 +370,8 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         return block.timestamp + newLockTime;
     }
 }
+    function getSendToDexVoters() public view returns (address[] memory) {
+        return sendToDexVoters;
+    }
+
 }

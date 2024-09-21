@@ -2,6 +2,17 @@ pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+/*
+   ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
+  ███    ███ ███    ███   ███    ███   ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ 
+  ███    █▀  ███    ███   ███    ███   ███    █▀    ███    ███ ███   ███   ███   ███    █▀  ███   ███   ███   ███    █▀  
+  ███        ███    ███   ███    ███  ▄███▄▄▄      ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███   ███   ███  ▄███▄▄▄     
+▀███████████ ███    ███ ▀█████████▀  ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███   ███   ███ ▀▀███▀▀▀     
+         ███ ███    ███   ███          ███    █▄  ▀███████████ ███   ███   ███   ███    █▄  ███   ███   ███   ███    █▄  
+   ▄█    ███ ███    ███   ███          ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ███   ███   ███    ███ 
+ ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███  ▀█   ███   █▀    ██████████  ▀█   ███   █▀    ██████████ 
+                                                    ███    ███                                                           
+*/
 
 contract SuperMemeRegistry is Ownable {
     event TokenCreated(
@@ -13,14 +24,11 @@ contract SuperMemeRegistry is Ownable {
     );
 
     address[] public tokenAddresses;
-    address public refundableFactory;
-    address public degenFactory;
-    address public lockingCurveFactory;
+
+    mapping (address => bool) public isFactory;
 
     constructor() Ownable(msg.sender) {
-        refundableFactory = address(0);
-        degenFactory = address(0);
-        lockingCurveFactory = address(0);
+
     }
 
     function registerToken(
@@ -36,23 +44,18 @@ contract SuperMemeRegistry is Ownable {
 
     modifier onlyFactory() {
         require(
-            msg.sender == refundableFactory ||
-                msg.sender == degenFactory ||
-                msg.sender == lockingCurveFactory,
+            isFactory[msg.sender],
             "Only factory can call this function"
         );
         _;
     }
 
-    function setRefundableFactory(address _refundableFactory) public onlyOwner {
-        refundableFactory = _refundableFactory;
-    }
-
-    function setDegenFactory(address _degenFactory) public onlyOwner {
-        degenFactory = _degenFactory;
-    }
-
-    function setLockingCurveFactory(address _lockingCurveFactory) public onlyOwner {
-        lockingCurveFactory = _lockingCurveFactory;
+    function setFactory(address _factory) public onlyOwner {
+        if (isFactory[_factory]) {
+            isFactory[_factory] = false;
+            return;
+            
+        }
+        isFactory[_factory] = true;
     }
 }

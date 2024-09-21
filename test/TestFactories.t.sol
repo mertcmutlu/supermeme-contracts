@@ -7,6 +7,7 @@ import "../src/Factories/RefundableFactory.sol";
 import "../src/SuperMemeDegenBondingCurve.sol";
 import "../src/Factories/SuperMemeRegistry.sol";
 import "../src/SuperMemeRevenueCollector.sol";
+import "../src/Factories/CommunityLockFactory.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 
 contract TestFactories is Test {
@@ -20,6 +21,7 @@ contract TestFactories is Test {
     SuperMemeDegenBondingCurve public degenbondingcurve;
     SuperMemeRegistry public registry;
     SuperMemeRevenueCollector public revenueCollector;
+    CommunityLockFactory public communityLockFactory;
     uint256 public createTokenRevenue = 0.00001 ether;
 
     address public owner = address(0x123);
@@ -42,18 +44,25 @@ contract TestFactories is Test {
         degenFactory = new DegenFactory(address(registry));
         refundableFactory = new RefundableFactory(address(registry));
         lockingCurveFactory = new LockingCurveFactory(address(registry));
+        communityLockFactory = new CommunityLockFactory(address(registry));
 
         degenFactory.setRevenueCollector(address(revenueCollector));
         refundableFactory.setRevenueCollector(address(revenueCollector));
         lockingCurveFactory.setRevenueCollector(address(revenueCollector));
+        communityLockFactory.setRevenueCollector(address(revenueCollector));
 
         degenFactory.setCreateTokenRevenue(createTokenRevenue);
         refundableFactory.setCreateTokenRevenue(createTokenRevenue);
         lockingCurveFactory.setCreateTokenRevenue(createTokenRevenue);
+        communityLockFactory.setCreateTokenRevenue(createTokenRevenue);
 
-        registry.setDegenFactory(address(degenFactory));
-        registry.setRefundableFactory(address(refundableFactory));
-        registry.setLockingCurveFactory(address(lockingCurveFactory));
+
+
+        registry.setFactory(address(degenFactory));
+        registry.setFactory(address(refundableFactory));
+        registry.setFactory(address(lockingCurveFactory));
+        registry.setFactory(address(communityLockFactory));
+        
 
 
 
@@ -210,5 +219,24 @@ contract TestFactories is Test {
                 );
             assertEq(newTokenInstance.balanceOf(addr1), buyAmount * 10 ** 18);
         }
+    }
+
+    function testCommunityLockNoDevBuy() public {
+        vm.startPrank(addr1);
+        uint256 buyAmount = 0;
+        uint256 cost = degenbondingcurve.calculateCost(buyAmount);
+        uint256 tax = cost / 100;
+        uint256 costWithTax = cost + tax;
+        uint256 slippage = cost / 100;
+        uint256 buyEth = costWithTax + slippage;
+        address newToken = communityLockFactory.createToken{value: createTokenRevenue}(
+            "SuperMeme",
+            "MEME",
+            address(addr1)
+        );
+        SuperMemeCommunityLock newTokenInstance = SuperMemeCommunityLock(
+                newToken
+            );
+        assertEq(newTokenInstance.balanceOf(addr1), buyAmount * 10 ** 18);
     }
 }

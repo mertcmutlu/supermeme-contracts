@@ -42,7 +42,9 @@ contract TeamTests is Test {
         vm.startPrank(addresses[99]);
         registry = new SuperMemeRegistry();
         factory = new RefundableFactory(address(registry));
-        registry.setRefundableFactory(address(factory));
+        
+        registry.setFactory(address(factory));
+
         address testToken = factory.createToken{value: createTokenRevenue}(
             "SuperMeme",
             "MEME",

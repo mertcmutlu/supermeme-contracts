@@ -5,6 +5,18 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "forge-std/console.sol";
 
+/*
+   ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
+  ███    ███ ███    ███   ███    ███   ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ 
+  ███    █▀  ███    ███   ███    ███   ███    █▀    ███    ███ ███   ███   ███   ███    █▀  ███   ███   ███   ███    █▀  
+  ███        ███    ███   ███    ███  ▄███▄▄▄      ▄███▄▄▄▄██▀ ███   ███   ███  ▄███▄▄▄     ███   ███   ███  ▄███▄▄▄     
+▀███████████ ███    ███ ▀█████████▀  ▀▀███▀▀▀     ▀▀███▀▀▀▀▀   ███   ███   ███ ▀▀███▀▀▀     ███   ███   ███ ▀▀███▀▀▀     
+         ███ ███    ███   ███          ███    █▄  ▀███████████ ███   ███   ███   ███    █▄  ███   ███   ███   ███    █▄  
+   ▄█    ███ ███    ███   ███          ███    ███   ███    ███ ███   ███   ███   ███    ███ ███   ███   ███   ███    ███ 
+ ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███  ▀█   ███   █▀    ██████████  ▀█   ███   █▀    ██████████ 
+                                                    ███    ███                                                           
+*/
+
 contract SuperMemeRevenueCollector is Ownable {
     ERC20 public mockToken;
     ERC721 public mockNFT;
@@ -19,33 +31,23 @@ contract SuperMemeRevenueCollector is Ownable {
 
     receive() external payable {
         totalEtherCollected += msg.value;
-        nftShare += msg.value / 100; // Only add 1% of the new Ether
+        nftShare += msg.value / 100; 
     }
-    //check the double usage
-    fallback() external payable {
-        totalEtherCollected += msg.value;
-        nftShare += msg.value / 100; // Only add 1% of the new Ether
-    }
-
     function distrubuteRevenue() public payable {}
 
     function collectNFTJackpot(uint256 _tokenId) public {
-        ("collectNFTJackpot");
         require(
             mockNFT.ownerOf(_tokenId) == msg.sender,
             "NFT not owned by sender"
         );
-        ("passed ownerOf");
         require(
             nftLocks[_tokenId] < block.timestamp || nftLocks[_tokenId] == 0,
             "NFT is locked"
         );
-
         uint256 jackpot = nftShare;
-        nftShare = 0; // Reset first
-        nftLocks[_tokenId] = block.timestamp + lockDuration; // Update lock time
-
-        payable(msg.sender).transfer(jackpot); // Transfer Ether last
+        nftShare = 0;
+        nftLocks[_tokenId] = block.timestamp + lockDuration;
+        payable(msg.sender).transfer(jackpot);
     }
 
     function remainingLockTime(uint256 _tokenId) public view returns (uint256) {

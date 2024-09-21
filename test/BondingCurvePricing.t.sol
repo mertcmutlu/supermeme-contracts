@@ -59,8 +59,11 @@ contract BondingCurvePricingTest is Test {
 
         degenFactory = new DegenFactory(address(registry));
         refundableFactory = new RefundableFactory(address(registry));
-        registry.setDegenFactory(address(degenFactory));
-        registry.setRefundableFactory(address(refundableFactory));
+        
+        registry.setFactory(address(degenFactory));
+        registry.setFactory(address(refundableFactory));
+        
+
         degenFactory.setRevenueCollector(address(revenueCollector));
         refundableFactory.setRevenueCollector(address(revenueCollector));
         //Create a token

@@ -8,6 +8,7 @@ import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 //import uniswap pair
 import {IUniswapV2Pair} from "../src/Interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router02} from "../src/Interfaces/IUniswapV2Router02.sol";
+import {SuperMemeTokenCalculator} from "../src/SuperMemeTokenCalculator.sol";
 
 contract LockingCurve is Test {
     uint256 public dummyBuyAmount = 1000;
@@ -15,6 +16,7 @@ contract LockingCurve is Test {
     IUniswapV2Pair public pair;
     IUniswapFactory public unifactory;
     IUniswapV2Router02 public router;
+    SuperMemeTokenCalculator public tokenCalculator;
 
     SuperMemeLockingCurve public lockingCurve;
 
@@ -72,6 +74,8 @@ contract LockingCurve is Test {
         unifactory = IUniswapFactory(
             address(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6)
         );
+
+
         vm.deal(owner, 1000 ether);
         vm.deal(addr1, 1000 ether);
         vm.deal(addr2, 1000 ether);
@@ -81,6 +85,8 @@ contract LockingCurve is Test {
         vm.deal(addr6, 1000 ether);
         vm.deal(addr7, 1000 ether);
 
+        tokenCalculator = new SuperMemeTokenCalculator();
+
         lockingCurve = new SuperMemeLockingCurve(
             "SuperMeme",
             "MEME",
@@ -88,7 +94,7 @@ contract LockingCurve is Test {
             owner,
             address(0x123),
             0,
-            3 days
+            1 days
         );
 
         vm.stopPrank();
@@ -260,6 +266,7 @@ contract LockingCurve is Test {
             );
             vm.stopPrank();
         }
+
     }
 
     function testOneUserBuysCheckDecreasingLockTime() public {
@@ -669,6 +676,417 @@ contract LockingCurve is Test {
             );
             vm.stopPrank();
         }
+    }
+
+    function testCase2Locking() public {
+               //buy with 5 users 2 hours apart each
+        uint256 amount = 150000000;
+        uint256 cost = lockingCurve.calculateCost(amount);
+        uint256 tax = cost / 100;
+        uint256 totalCost = cost + tax;
+        uint256 slippage = totalCost / 100;
+        uint256 totalCostWithSlippage = totalCost + slippage;
+        for (uint256 i = 0; i < 5; i++) {
+            amount = 150000000;
+            cost = lockingCurve.calculateCost(amount);
+            tax = cost / 100;
+            totalCost = cost + tax;
+            slippage = totalCost / 100;
+            totalCostWithSlippage = totalCost + slippage;
+                   uint256 nextLockTime = lockingCurve.calculateNextLockTime();
+            vm.startPrank(addresses[i]);
+
+            lockingCurve.buyTokens{value: totalCostWithSlippage}(
+                amount,
+                100,
+                totalCost
+            );
+            assertEq(lockingCurve.balanceOf(addresses[i]), amount * 10 ** 18);
+            uint256 lockTime = lockingCurve.lockTime(addresses[i]);
+            assertEq(lockTime, nextLockTime);
+            uint256 contractLockRemaining = lockingCurve.checkRemainingLockTime(
+                addresses[i]
+            );
+            uint256 passTime =  2 hours * (i +1);
+            vm.warp(block.timestamp + passTime);
+            console.log("current timestamp", block.timestamp);
+            console.log("remainingLockTime", secondsToHumanReadable(lockingCurve.checkRemainingLockTime(addresses[i])));
+            vm.stopPrank();
+        }
+
+
+        console.log("scaledBondingCurveCompleted", lockingCurve.scaledBondingCurveCompleted());
+        vm.startPrank(addresses[3]);
+        amount = 150000000;
+        lockingCurve.sellTokens(amount, 100);
+        assertEq(lockingCurve.balanceOf(addresses[3]), 0);
+    }
+
+    function testSinanCase3() public {
+        uint256[] memory initialLocks = new uint256[](40);
+        uint256[] memory buyTimes = new uint256[](40);
+        uint256 totalHoursPassed = 0;
+        address[] memory new_addresses = generateMultipleAddresses(40);
+        //deal eth to them
+        for (uint256 i = 0; i < new_addresses.length; i++) {
+            vm.deal(new_addresses[i], 1 ether);
+        }
+
+        //user 0 buys 0.01 ether worth of tokens
+        vm.startPrank(new_addresses[0]);
+        uint256 scaledSupply = lockingCurve.scaledSupply();
+        uint256 amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.01 ether);
+        uint256 cost = lockingCurve.calculateCost(amount);
+        uint256 tax = cost / 100;
+        uint256 totalCost = cost + tax;
+        uint256 slippage = totalCost / 100;
+        uint256 totalCostWithSlippage = totalCost + slippage;
+        uint256 nextLockTime = lockingCurve.calculateNextLockTime();
+        initialLocks[0] = nextLockTime - block.timestamp;
+        buyTimes[0] = block.timestamp;
+        console.log("user 0 is going to buy 0.01 ether worth of tokens");
+        console.log("calculated next lock for user 0 is", secondsToHumanReadable(nextLockTime - block.timestamp));
+        lockingCurve.buyTokens{value: totalCostWithSlippage}(
+            amount,
+            100,
+            totalCost
+        );
+        assertEq(lockingCurve.balanceOf(new_addresses[0]), amount * 10 ** 18);
+        uint256 lockTime = lockingCurve.lockTime(new_addresses[0]);
+        console.log("actual lock time for user 0 is,", secondsToHumanReadable(lockTime- block.timestamp));
+        assertEq(lockTime, nextLockTime);
+        uint256 contractLockRemaining = lockingCurve.checkRemainingLockTime(
+            new_addresses[0]
+        );
+        console.log("contract lock remaining time for user 0 is", secondsToHumanReadable(contractLockRemaining));
+
+        //user 2 buys 0.01 ether worth of tokens
+        vm.startPrank(new_addresses[1]);
+        scaledSupply = lockingCurve.scaledSupply();
+        amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.01 ether);
+        cost = lockingCurve.calculateCost(amount);
+        tax = cost / 100;
+        totalCost = cost + tax;
+        slippage = totalCost / 100;
+        totalCostWithSlippage = totalCost + slippage;
+        nextLockTime = lockingCurve.calculateNextLockTime();
+        initialLocks[1] = nextLockTime- block.timestamp;
+        buyTimes[1] = block.timestamp;
+        console.log("user 1 is going to buy 0.01 ether worth of tokens");
+        console.log("calculated next lock for user 1 is", secondsToHumanReadable(nextLockTime - block.timestamp));
+        lockingCurve.buyTokens{value: totalCostWithSlippage}(
+            amount,
+            100,
+            totalCost
+        );
+        assertEq(lockingCurve.balanceOf(new_addresses[1]), amount * 10 ** 18);
+        lockTime = lockingCurve.lockTime(new_addresses[1]);
+        console.log("actual lock time for user 1 is,", secondsToHumanReadable(lockTime- block.timestamp));
+        assertEq(lockTime, nextLockTime);
+        contractLockRemaining = lockingCurve.checkRemainingLockTime(
+            new_addresses[1]
+        );
+        console.log("contract lock remaining time for user 1 is", secondsToHumanReadable(contractLockRemaining));
+
+        // 2 hours passes
+        console.log("   ");
+        console.log("1 hours passes");
+        console.log("   ");
+        vm.warp(block.timestamp + 1 hours);
+        totalHoursPassed += 1;
+        assertEq(block.timestamp- buyTimes[0], 1 hours);
+
+        // user 2,3,4 buys 0.01 ether worth of tokens
+        for (uint256 i = 2; i < 5; i++) {
+            vm.startPrank(new_addresses[i]);
+            scaledSupply = lockingCurve.scaledSupply();
+            amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.01 ether);
+            cost = lockingCurve.calculateCost(amount);
+            tax = cost / 100;
+            totalCost = cost + tax;
+            slippage = totalCost / 100;
+            totalCostWithSlippage = totalCost + slippage;
+            nextLockTime = lockingCurve.calculateNextLockTime();
+            initialLocks[i] = nextLockTime- block.timestamp;
+            buyTimes[i] = block.timestamp;
+            console.log("user", i, "is going to buy 0.01 ether worth of tokens");
+            console.log("calculated next lock for user", i, "is", secondsToHumanReadable(nextLockTime - block.timestamp));
+            lockingCurve.buyTokens{value: totalCostWithSlippage}(
+                amount,
+                100,
+                totalCost
+            );
+            assertEq(lockingCurve.balanceOf(new_addresses[i]), amount * 10 ** 18);
+            lockTime = lockingCurve.lockTime(new_addresses[i]);
+            console.log("actual lock time for user", i, "is,", secondsToHumanReadable(lockTime- block.timestamp));
+            assertEq(lockTime, nextLockTime);
+            contractLockRemaining = lockingCurve.checkRemainingLockTime(
+                new_addresses[i]
+            );
+            console.log("contract lock remaining time for user", i, "is", secondsToHumanReadable(contractLockRemaining));
+            vm.stopPrank();
+        }
+        
+
+        vm.startPrank(new_addresses[5]);
+        //user buys 0.01 ether
+        scaledSupply = lockingCurve.scaledSupply();
+        amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.01 ether);
+        cost = lockingCurve.calculateCost(amount);
+        tax = cost / 100;
+        totalCost = cost + tax;
+        slippage = totalCost / 100;
+        totalCostWithSlippage = totalCost + slippage;
+        nextLockTime = lockingCurve.calculateNextLockTime();
+        initialLocks[5] = nextLockTime- block.timestamp;
+        buyTimes[5] = block.timestamp;
+        console.log("USER 5 is going to buy 0.01 ether worth of tokens");
+        console.log("calculated next lock for USER 5 is", secondsToHumanReadable(nextLockTime - block.timestamp));
+        lockingCurve.buyTokens{value: totalCostWithSlippage}(
+            amount,
+            100,
+            totalCost
+        );
+        assertEq(lockingCurve.balanceOf(new_addresses[5]), amount * 10 ** 18);
+        lockTime = lockingCurve.lockTime(new_addresses[5]);
+        console.log("actual lock time for USER 5 is,", secondsToHumanReadable(lockTime- block.timestamp));
+        assertEq(lockTime, nextLockTime);
+        contractLockRemaining = lockingCurve.checkRemainingLockTime(
+            new_addresses[5]
+        );
+        console.log("contract lock remaining time for USER 5 is", secondsToHumanReadable(contractLockRemaining));
+        vm.stopPrank();
+        
+
+
+        // 1 hour passes
+        console.log("   ");
+        console.log("1 hour passes");
+        console.log("   ");
+        vm.warp(block.timestamp + 1 hours);
+        totalHoursPassed += 1;
+        assertEq(block.timestamp- buyTimes[0], 2 hours);
+
+        // user ,6,7,8,9 buys 0.02 ether worth of tokens
+        for (uint256 i = 6; i < 10; i++) {
+            console.log("     ");
+            vm.startPrank(new_addresses[i]);
+            scaledSupply = lockingCurve.scaledSupply();
+            amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.02 ether);
+            cost = lockingCurve.calculateCost(amount);
+            tax = cost / 100;
+            totalCost = cost + tax;
+            slippage = totalCost / 100;
+            totalCostWithSlippage = totalCost + slippage;
+            nextLockTime = lockingCurve.calculateNextLockTime();
+            initialLocks[i] = nextLockTime- block.timestamp;
+            buyTimes[i] = block.timestamp;
+            console.log("user", i, "is going to buy 0.02 ether worth of tokens");
+            console.log("calculated next lock for user", i, "is", secondsToHumanReadable(nextLockTime - block.timestamp));
+            lockingCurve.buyTokens{value: totalCostWithSlippage}(
+                amount,
+                100,
+                totalCost
+            );
+            assertEq(lockingCurve.balanceOf(new_addresses[i]), amount * 10 ** 18);
+            lockTime = lockingCurve.lockTime(new_addresses[i]);
+            console.log("actual lock time for user", i, "is,", secondsToHumanReadable(lockTime- block.timestamp));
+            assertEq(lockTime, nextLockTime);
+            contractLockRemaining = lockingCurve.checkRemainingLockTime(
+                new_addresses[i]
+            );
+            console.log("contract lock remaining time for user", i, "is", secondsToHumanReadable(contractLockRemaining));
+            vm.stopPrank();
+        }
+
+        //1 hour passes
+        console.log("   ");
+        console.log("1 hour passes");
+        console.log("   ");
+        vm.warp(block.timestamp + 1 hours);
+        totalHoursPassed += 1;
+        assertEq(block.timestamp- buyTimes[0], 3 hours);
+        
+        console.log(" ");
+        console.log("total hours passed", totalHoursPassed);
+        console.log(" ");
+        for (uint256 i = 0; i < 9; i++) {
+            console.log("    ");
+            console.log("user",(i), "remaining lock time is", secondsToHumanReadable(lockingCurve.checkRemainingLockTime(new_addresses[i])));
+            uint256 passedTime = block.timestamp - buyTimes[i];
+            console.log("user", (i),secondsToHumanReadable(passedTime), " passed since initial lock");
+            console.log("user", (i), "initial lock time was", secondsToHumanReadable(initialLocks[i]));
+        }
+    
+    vm.startPrank(new_addresses[10]);
+    //user buys 0.5 ether
+    scaledSupply = lockingCurve.scaledSupply();
+    amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.5 ether);
+    cost = lockingCurve.calculateCost(amount);
+    tax = cost / 100;
+    totalCost = cost + tax;
+    slippage = totalCost / 100;
+    totalCostWithSlippage = totalCost + slippage;
+    nextLockTime = lockingCurve.calculateNextLockTime();
+    initialLocks[10] = nextLockTime- block.timestamp;
+    buyTimes[10] = block.timestamp;
+    console.log("USER 10 is going to buy 0.5 ether worth of tokens");
+    console.log("calculated next lock for USER 10 is", secondsToHumanReadable(nextLockTime - block.timestamp));
+    lockingCurve.buyTokens{value: totalCostWithSlippage}(
+        amount,
+        100,
+        totalCost
+    );
+    assertEq(lockingCurve.balanceOf(new_addresses[10]), amount * 10 ** 18);
+    lockTime = lockingCurve.lockTime(new_addresses[10]);
+    console.log("actual lock time for USER 10 is,", secondsToHumanReadable(lockTime- block.timestamp));
+    assertEq(lockTime, nextLockTime);
+    contractLockRemaining = lockingCurve.checkRemainingLockTime(
+        new_addresses[10]
+    );
+    console.log("contract lock remaining time for USER 10 is", secondsToHumanReadable(contractLockRemaining));
+    vm.stopPrank();
+
+    //0.03 ether
+    vm.startPrank(new_addresses[11]);
+    //user buys 0.03 ether
+    scaledSupply = lockingCurve.scaledSupply();
+    amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.03 ether);
+    cost = lockingCurve.calculateCost(amount);
+    tax = cost / 100;
+    totalCost = cost + tax;
+    slippage = totalCost / 100;
+    totalCostWithSlippage = totalCost + slippage;
+    nextLockTime = lockingCurve.calculateNextLockTime();
+    initialLocks[11] = nextLockTime- block.timestamp;
+    buyTimes[11] = block.timestamp;
+    console.log("USER 11 is going to buy 0.03 ether worth of tokens");
+    console.log("calculated next lock for USER 11 is", secondsToHumanReadable(nextLockTime - block.timestamp));
+    lockingCurve.buyTokens{value: totalCostWithSlippage}(
+        amount,
+        100,
+        totalCost
+    );
+    assertEq(lockingCurve.balanceOf(new_addresses[11]), amount * 10 ** 18);
+    lockTime = lockingCurve.lockTime(new_addresses[11]);
+    console.log("actual lock time for USER 11 is,", secondsToHumanReadable(lockTime- block.timestamp));
+    assertEq(lockTime, nextLockTime);
+    contractLockRemaining = lockingCurve.checkRemainingLockTime(
+        new_addresses[11]
+    );
+    console.log("contract lock remaining time for USER 11 is", secondsToHumanReadable(contractLockRemaining));
+    vm.stopPrank();
+
+    //2 hours passes
+    console.log("   ");
+    console.log("2 hours passes");
+    console.log("   ");
+
+    vm.warp(block.timestamp + 2 hours);
+    totalHoursPassed += 2;
+    assertEq(block.timestamp- buyTimes[0], 5 hours);
+
+    //users  12 13 14 buys 0.03 ether
+    for  (uint256 i = 12; i < 15; i++) {
+        console.log("     ");
+        vm.startPrank(new_addresses[i]);
+        scaledSupply = lockingCurve.scaledSupply();
+        amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.03 ether);
+        cost = lockingCurve.calculateCost(amount);
+        tax = cost / 100;
+        totalCost = cost + tax;
+        slippage = totalCost / 100;
+        totalCostWithSlippage = totalCost + slippage;
+        nextLockTime = lockingCurve.calculateNextLockTime();
+        initialLocks[i] = nextLockTime- block.timestamp;
+        buyTimes[i] = block.timestamp;
+        console.log("user", i, "is going to buy 0.03 ether worth of tokens");
+        console.log("calculated next lock for user", i, "is", secondsToHumanReadable(nextLockTime - block.timestamp));
+        lockingCurve.buyTokens{value: totalCostWithSlippage}(
+            amount,
+            100,
+            totalCost
+        );
+        assertEq(lockingCurve.balanceOf(new_addresses[i]), amount * 10 ** 18);
+        lockTime = lockingCurve.lockTime(new_addresses[i]);
+        console.log("actual lock time for user", i, "is,", secondsToHumanReadable(lockTime- block.timestamp));
+        assertEq(lockTime, nextLockTime);
+        contractLockRemaining = lockingCurve.checkRemainingLockTime(
+            new_addresses[i]
+        );
+        console.log("contract lock remaining time for user", i, "is", secondsToHumanReadable(contractLockRemaining));
+        vm.stopPrank();
+    }
+
+    //2 hours passes
+    console.log("   ");
+    console.log("2 hours passes");
+    console.log("   ");
+
+    vm.warp(block.timestamp + 2 hours);
+    totalHoursPassed += 2;
+    assertEq(block.timestamp- buyTimes[0], 7 hours);
+
+    //user 15 buys 0.1 ether
+    vm.startPrank(new_addresses[15]);
+    scaledSupply = lockingCurve.scaledSupply();
+    amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.1 ether);
+    cost = lockingCurve.calculateCost(amount);
+    tax = cost / 100;
+    totalCost = cost + tax;
+    slippage = totalCost / 100;
+    totalCostWithSlippage = totalCost + slippage;
+    nextLockTime = lockingCurve.calculateNextLockTime();
+    initialLocks[15] = nextLockTime- block.timestamp;
+    buyTimes[15] = block.timestamp;
+    console.log("user 15 is going to buy 0.1 ether worth of tokens");
+    console.log("calculated next lock for user 15 is", secondsToHumanReadable(nextLockTime - block.timestamp));
+    lockingCurve.buyTokens{value: totalCostWithSlippage}(
+        amount,
+        100,
+        totalCost
+    );
+
+    //user 16 buys 0.04 ether
+    vm.startPrank(new_addresses[16]);
+    scaledSupply = lockingCurve.scaledSupply();
+    amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.04 ether);
+    cost = lockingCurve.calculateCost(amount);
+    tax = cost / 100;
+    totalCost = cost + tax;
+    slippage = totalCost / 100;
+    totalCostWithSlippage = totalCost + slippage;
+    nextLockTime = lockingCurve.calculateNextLockTime();
+    initialLocks[16] = nextLockTime- block.timestamp;
+    buyTimes[16] = block.timestamp;
+    console.log("user 16 is going to buy 0.04 ether worth of tokens");
+    console.log("calculated next lock for user 16 is", secondsToHumanReadable(nextLockTime - block.timestamp));
+    lockingCurve.buyTokens{value: totalCostWithSlippage}(
+        amount,
+        100,
+        totalCost
+    );
+
+    //3 hours passes
+    console.log("   ");
+    console.log("3 hours passes");
+    console.log("   ");
+    
+    vm.warp(block.timestamp + 3 hours);
+    totalHoursPassed += 3;
+    assertEq(block.timestamp- buyTimes[0], 10 hours);
+
+    console.log(" ");
+    console.log("total hours passed", totalHoursPassed);
+    console.log(" ");
+    for (uint256 i = 0; i < 17; i++) {
+        console.log("    ");
+        console.log("user",(i), "remaining lock time is", secondsToHumanReadable(lockingCurve.checkRemainingLockTime(new_addresses[i])));
+        uint256 passedTime = block.timestamp - buyTimes[i];
+        console.log("user", (i),secondsToHumanReadable(passedTime), " passed since initial lock");
+        console.log("user", (i), "initial lock time was", secondsToHumanReadable(initialLocks[i]));
+    }
+    console.log("passed time", secondsToHumanReadable(block.timestamp- buyTimes[0]));
     }
 
 }

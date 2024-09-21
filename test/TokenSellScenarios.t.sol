@@ -48,7 +48,7 @@ contract TokenSellScenarios is Test {
         vm.startPrank(addr1);
         registry = new SuperMemeRegistry();
         factory = new DegenFactory(address(registry));
-        registry.setDegenFactory(address(factory));
+        registry.setFactory(address(factory));
         //Create a token
         address testToken = factory.createToken{value: createTokenRevenue}(
             "SuperMeme",

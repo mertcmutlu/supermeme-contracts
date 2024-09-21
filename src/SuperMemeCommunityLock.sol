@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -6,7 +5,6 @@ import "./Interfaces/IUniswapV2Router02.sol";
 import "./Interfaces/IUniswapV2Pair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "forge-std/console.sol";
-
 
 /*
    ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
@@ -19,7 +17,8 @@ import "forge-std/console.sol";
  ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███  ▀█   ███   █▀    ██████████  ▀█   ███   █▀    ██████████ 
                                                     ███    ███                                                           
 */
-contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
+
+contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
     event SentToDex(uint256 ethAmount, uint256 tokenAmount, uint256 timestamp);
     event Price(
         uint256 indexed price,
@@ -41,14 +40,12 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
         address indexed seller,
         uint256 totalSupply
     );
-
+    uint256 public MAX_SALE_SUPPLY = 1e9; // 1 billion tokens
     uint256 public constant TOTAL_ETHER = 4 ether;
     uint256 public constant SCALE = 1e18; // Scaling factor
     uint256 public constant A = 234375; // Calculated constant A
-    uint256 public constant scaledLiquidityThreshold = 200_000_000;
-
     uint256 liquidityThreshold = 200_000_000 * 10 ** 18;
-    uint256 public MAX_SALE_SUPPLY = 1e9; // 1 billion tokens
+    uint256 public constant scaledLiquidityThreshold = 200_000_000;
 
     uint256 private constant tradeTax = 1000;
     uint256 private constant tradeTaxDivisor = 100000;
@@ -57,8 +54,6 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
     uint256 public scaledSupply;
 
     address public devAddress;
-    bool public devLocked;
-    uint256 public devLockTime;
 
     bool public bondingCurveCompleted;
 
@@ -71,15 +66,15 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
 
     address public factoryContract;
 
+    bool public communityLocked = true; // Initially locked
+    mapping(address => bool) public hasVotedToUnlock; // Track whether an address has voted
+    uint256 public totalVotes; // Total votes to unlock selling
+
     constructor(
         string memory _name,
         string memory _symbol,
-        bool _devLocked,
-        uint256 _amount,
         address _devAdress,
-        address _revenueCollector,
-        uint256 _devLockDuration,
-        uint256 _buyEth
+        address _revenueCollector
     ) public payable ERC20(_name, _symbol) {
         factoryContract = msg.sender;
         revenueCollector = _revenueCollector;
@@ -91,12 +86,53 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
         _mint(address(this), liquidityThreshold);
         scaledSupply = scaledLiquidityThreshold;
         devAddress = _devAdress;
-        devLocked = _devLocked;
-        devLockTime = block.timestamp + _devLockDuration;
-        if (_amount > 0) {
-            buyTokens(_amount, 100, _buyEth);
+    }
+    function Vote() public {
+        require(balanceOf(msg.sender) > 0, "No tokens held");
+        uint256 scaledVotingSupply = totalSupply() - liquidityThreshold;
+        if (!hasVotedToUnlock[msg.sender]) {
+            // Voting to unlock selling
+            require(communityLocked, "Selling is already unlocked");
+            // Add vote for unlocking
+            hasVotedToUnlock[msg.sender] = true;
+            totalVotes += balanceOf(msg.sender);
+            // Check if more than 50% of supply has voted to unlock
+            if (totalVotes * 2 >= scaledVotingSupply) {
+                communityLocked = false; // Unlock selling
+            }
+        } else {
+            // Voting to lock selling again
+            require(!communityLocked, "Selling is already locked");
+            require(hasVotedToUnlock[msg.sender], "No vote to lock");
+
+            // Subtract vote when user votes to lock
+            hasVotedToUnlock[msg.sender] = false;
+            totalVotes -= balanceOf(msg.sender);
+
+            // Check if less than 50% of supply is voting to unlock
+            if (totalVotes * 2 < scaledVotingSupply) {
+                communityLocked = true; // Lock selling again
+            }
         }
     }
+
+    //check if the address has voted to unlock selling
+    function getHasVotedToUnlock(address _address) public view returns (bool) {
+        return hasVotedToUnlock[_address];
+    }
+    //check the percentage of votes to unlock selling
+    function percentageVotesToUnlock() public view returns (uint256) {
+        uint256 scaledVotingSupply = totalSupply() - liquidityThreshold;
+        return (totalVotes * 100) / scaledVotingSupply;
+    }
+
+    function getVotingPowerPercentage(
+        address _address
+    ) public view returns (uint256) {
+        uint256 scaledVotingSupply = totalSupply() - liquidityThreshold;
+        return balanceOf(_address) / scaledVotingSupply;
+    }
+
     function buyTokens(
         uint256 _amount,
         uint256 _slippage,
@@ -118,19 +154,26 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
         uint256 excessEth = (_buyEth - totalCost > 0) ? _buyEth - totalCost : 0;
         //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
         totalEtherCollected += cost;
+        address buyer = (msg.sender == factoryContract)
+            ? devAddress
+            : msg.sender;
         scaledSupply += _amount;
+        _mint(buyer, _amount * 10 ** 18);
         if (scaledSupply >= MAX_SALE_SUPPLY) {
             bondingCurveCompleted = true;
-            _amount = MAX_SALE_SUPPLY - (scaledSupply - _amount);
         }
-        address buyer = (msg.sender == factoryContract) ? devAddress : msg.sender;
+
 
         if (excessEth > 0) {
             payable(buyer).transfer(excessEth);
         }
-        _mint(buyer, _amount * 10 ** 18);
+        if (hasVotedToUnlock[buyer]) {
+            totalVotes += _amount;
+        }
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
+        uint256 remainingTokens = MAX_SALE_SUPPLY - scaledSupply;
+
         emit tokensBought(_amount, cost, address(this), buyer, totalSup);
         emit Price(lastPrice, totalSup, address(this), _amount);
 
@@ -170,32 +213,30 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
         emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
     }
 
-    function sellTokens(uint256 _amount, uint256 _minimumEthRequired) public nonReentrant {
+    function sellTokens(
+        uint256 _amount,
+        uint256 _minimumEthRequired
+    ) public nonReentrant {
+        require(!communityLocked, "Community locked");
         require(!bondingCurveCompleted, "Curve done");
-        
+
         uint256 refund = calculateRefund(_amount);
         uint256 tax = (refund * tradeTax) / tradeTaxDivisor;
         uint256 netRefund = refund - tax;
-        
-        require(
-            address(this).balance >= netRefund,
-            "Low ETH"
-        );
-        require(
-            balanceOf(msg.sender) >= _amount * 10 ** 18,
-            "Low tokens"
-        );
-        require(
-            netRefund >= _minimumEthRequired,
-            "Low refund"
-        );
+
+        require(address(this).balance >= netRefund, "Low ETH");
+        require(balanceOf(msg.sender) >= _amount * 10 ** 18, "Low tokens");
+        require(netRefund >= _minimumEthRequired, "Low refund");
         payTax(tax);
         _burn(msg.sender, _amount * 10 ** 18);
         totalEtherCollected -= netRefund + tax;
+        if (hasVotedToUnlock[msg.sender]) {
+            totalVotes -= _amount;
+        }
         scaledSupply -= _amount;
-        
+
         payable(msg.sender).transfer(netRefund);
-        
+
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
         emit tokensSold(_amount, refund, address(this), msg.sender, totalSup);
@@ -214,21 +255,55 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
         address to,
         uint256 value
     ) internal override(ERC20) {
-        if (bondingCurveCompleted) {
+        console.log("from: ", from);
+        console.log("to: ", to);
+        console.log("address of router: ", address(uniswapV2Router));
+        console.log("address of this: ", address(this));
+        if (bondingCurveCompleted && !communityLocked) {
+            console.log("bondingCurveCompleted && !communityLocked");
             super._update(from, to, value);
-        } else {
-            if (from == devAddress && devLocked && block.timestamp < devLockTime) {
-                revert("Locked");
-            } else if (from == address(this) || from == address(0)) {
+            if (hasVotedToUnlock[from]) {
+                totalVotes -= value; // Reduce the sender's voting power
+            }
+            if (hasVotedToUnlock[to]) {
+                totalVotes += value; // Increase the recipient's voting power
+            }
+        } else if (bondingCurveCompleted && communityLocked) {
+            console.log("bondingCurveCompleted && communityLocked");
+            if (from == address(this) && (balanceOf(to) != 0 )) {
+                console.log("from == address(this) && to == address(uniswapV2Router)");
                 super._update(from, to, value);
+                return;
+            }
+            if (
+                
+                from == address(uniswapV2Router) ||
+                to == address(uniswapV2Router)
+            ) {
+                console.log("LOCKEDDDD");
+                revert("Locked");
+            }
+        } else {
+            console.log("else");
+            if (from == address(this) || from == address(0)) {
+                super._update(from, to, value);
+                if (hasVotedToUnlock[from]) {
+                    totalVotes -= value; // Reduce the sender's voting power
+                }
+                if (hasVotedToUnlock[to]) {
+                    totalVotes += value; // Increase the recipient's voting power
+                }
             } else if (to == address(this) || to == address(0)) {
                 super._update(from, to, value);
+                if (hasVotedToUnlock[from]) {
+                    totalVotes -= value; // Reduce the sender's voting power
+                }
+                if (hasVotedToUnlock[to]) {
+                    totalVotes += value; // Increase the recipient's voting power
+                }
             } else {
                 revert("No transfer");
             }
         }
-    }
-    function remainingTokens() public view returns (uint256) {
-        return MAX_SALE_SUPPLY - scaledSupply;
     }
 }

@@ -42,7 +42,7 @@ contract DegenBondingCurveTest is Test {
         vm.startPrank(owner);
         registry = new SuperMemeRegistry();
         degenFactory = new DegenFactory(address(registry));
-        registry.setDegenFactory(address(degenFactory));
+        registry.setFactory(address(degenFactory));
 
         degenbondingcurve = SuperMemeDegenBondingCurve(degenFactory.createToken{value: createTokenRevenue}("name", "symbol", false,0, owner, 0, 0));
         vm.stopPrank();
@@ -51,7 +51,7 @@ contract DegenBondingCurveTest is Test {
     function test_createToken() public {
         assertEq(degenbondingcurve.scaledSupply(),200000000);   
     }
-    function testCompleteCurve() public {
+    function testCompleteCurveDegen() public {
         uint256 amount = 800000000;
         vm.startPrank(addr1);
             uint256 cost = degenbondingcurve.calculateCost(amount);
@@ -68,7 +68,7 @@ contract DegenBondingCurveTest is Test {
             assertEq(degenbondingcurve.bondingCurveCompleted(), true);
     }
 
-    function testCompleteCurveBuy() public {
+    function testCompleteCurveBuyDegen() public {
         uint256 amount = 800000000;
         vm.startPrank(addr1);
             uint256 cost = degenbondingcurve.calculateCost(amount);
@@ -95,7 +95,7 @@ contract DegenBondingCurveTest is Test {
         vm.stopPrank();
     }
 
-    function testCompleteCurveTrade() public {
+    function testCompleteCurveTradeDegen() public {
         uint256 amount = 800000000;
         vm.startPrank(addr1);
             uint256 cost = degenbondingcurve.calculateCost(amount);

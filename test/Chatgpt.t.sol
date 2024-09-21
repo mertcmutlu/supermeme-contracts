@@ -62,7 +62,7 @@ contract ChatGPTTest is Test {
         vm.startPrank(addr1);
         registry = new SuperMemeRegistry();
         refundableFactory = new RefundableFactory(address(registry));
-        registry.setRefundableFactory(address(refundableFactory));
+        registry.setFactory(address(refundableFactory));
 
         address testToken = refundableFactory.createToken{value: createTokenRevenue, gas: 20000000000}(
             "SuperMeme",
