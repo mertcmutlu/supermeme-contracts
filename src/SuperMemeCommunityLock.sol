@@ -197,7 +197,7 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
     function sendToDex() public payable {
         require(bondingCurveCompleted, "Curve not done");
         payTax(sendDexRevenue);
-        console.log("paid tax");
+        
         totalEtherCollected -= sendDexRevenue;
         uint256 _ethAmount = totalEtherCollected;
         uint256 _tokenAmount = liquidityThreshold;
@@ -255,12 +255,12 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         address to,
         uint256 value
     ) internal override(ERC20) {
-        console.log("from: ", from);
-        console.log("to: ", to);
-        console.log("address of router: ", address(uniswapV2Router));
-        console.log("address of this: ", address(this));
+        
+        
+        
+        
         if (bondingCurveCompleted && !communityLocked) {
-            console.log("bondingCurveCompleted && !communityLocked");
+            
             super._update(from, to, value);
             if (hasVotedToUnlock[from]) {
                 totalVotes -= value; // Reduce the sender's voting power
@@ -269,9 +269,9 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
                 totalVotes += value; // Increase the recipient's voting power
             }
         } else if (bondingCurveCompleted && communityLocked) {
-            console.log("bondingCurveCompleted && communityLocked");
+            
             if (from == address(this) && (balanceOf(to) != 0 )) {
-                console.log("from == address(this) && to == address(uniswapV2Router)");
+                
                 super._update(from, to, value);
                 return;
             }
@@ -280,11 +280,11 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
                 from == address(uniswapV2Router) ||
                 to == address(uniswapV2Router)
             ) {
-                console.log("LOCKEDDDD");
+                
                 revert("Locked");
             }
         } else {
-            console.log("else");
+            
             if (from == address(this) || from == address(0)) {
                 super._update(from, to, value);
                 if (hasVotedToUnlock[from]) {

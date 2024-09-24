@@ -154,7 +154,7 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
     function sendToDex() public payable {
         require(bondingCurveCompleted, "Curve not done");
         payTax(sendDexRevenue);
-        console.log("paid tax");
+        
         totalEtherCollected -= sendDexRevenue;
         uint256 _ethAmount = totalEtherCollected;
         uint256 _tokenAmount = liquidityThreshold;

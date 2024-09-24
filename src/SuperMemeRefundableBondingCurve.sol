@@ -194,7 +194,7 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         uint256 _ethAmount = totalEtherCollected;
         uint256 _tokenAmount = liquidityThreshold;
         _approve(address(this), address(uniswapV2Router), _tokenAmount);
-        console.log("Adding liquidity to dex");
+        
         uniswapV2Router.addLiquidityETH{value: _ethAmount}(
             address(this),
             _tokenAmount,
