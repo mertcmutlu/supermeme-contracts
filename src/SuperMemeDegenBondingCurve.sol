@@ -7,7 +7,6 @@ import "./Interfaces/IUniswapV2Pair.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "forge-std/console.sol";
 
-
 /*
    ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
   ███    ███ ███    ███   ███    ███   ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ 
@@ -19,7 +18,7 @@ import "forge-std/console.sol";
  ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███  ▀█   ███   █▀    ██████████  ▀█   ███   █▀    ██████████ 
                                                     ███    ███                                                           
 */
-contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
+contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
     event SentToDex(uint256 ethAmount, uint256 tokenAmount, uint256 timestamp);
     event Price(
         uint256 indexed price,
@@ -115,7 +114,7 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
             "Slippage"
         );
         payTax(tax);
-        uint256 excessEth = (_buyEth - totalCost > 0) ? _buyEth - totalCost : 0;
+        uint256 excessEth = (_buyEth > totalCost) ? _buyEth - totalCost : 0;
         //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
         totalEtherCollected += cost;
         scaledSupply += _amount;
@@ -123,7 +122,9 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
             bondingCurveCompleted = true;
             _amount = MAX_SALE_SUPPLY - (scaledSupply - _amount);
         }
-        address buyer = (msg.sender == factoryContract) ? devAddress : msg.sender;
+        address buyer = (msg.sender == factoryContract)
+            ? devAddress
+            : msg.sender;
 
         if (excessEth > 0) {
             payable(buyer).transfer(excessEth);
@@ -154,7 +155,7 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
     function sendToDex() public payable {
         require(bondingCurveCompleted, "Curve not done");
         payTax(sendDexRevenue);
-        
+
         totalEtherCollected -= sendDexRevenue;
         uint256 _ethAmount = totalEtherCollected;
         uint256 _tokenAmount = liquidityThreshold;
@@ -170,32 +171,26 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
         emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
     }
 
-    function sellTokens(uint256 _amount, uint256 _minimumEthRequired) public nonReentrant {
+    function sellTokens(
+        uint256 _amount,
+        uint256 _minimumEthRequired
+    ) public nonReentrant {
         require(!bondingCurveCompleted, "Curve done");
-        
+
         uint256 refund = calculateRefund(_amount);
         uint256 tax = (refund * tradeTax) / tradeTaxDivisor;
         uint256 netRefund = refund - tax;
-        
-        require(
-            address(this).balance >= netRefund,
-            "Low ETH"
-        );
-        require(
-            balanceOf(msg.sender) >= _amount * 10 ** 18,
-            "Low tokens"
-        );
-        require(
-            netRefund >= _minimumEthRequired,
-            "Low refund"
-        );
+
+        require(address(this).balance >= netRefund, "Low ETH");
+        require(balanceOf(msg.sender) >= _amount * 10 ** 18, "Low tokens");
+        require(netRefund >= _minimumEthRequired, "Low refund");
         payTax(tax);
         _burn(msg.sender, _amount * 10 ** 18);
         totalEtherCollected -= netRefund + tax;
         scaledSupply -= _amount;
-        
+
         payable(msg.sender).transfer(netRefund);
-        
+
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
         emit tokensSold(_amount, refund, address(this), msg.sender, totalSup);
@@ -217,7 +212,9 @@ contract SuperMemeDegenBondingCurve is ERC20 , ReentrancyGuard {
         if (bondingCurveCompleted) {
             super._update(from, to, value);
         } else {
-            if (from == devAddress && devLocked && block.timestamp < devLockTime) {
+            if (
+                from == devAddress && devLocked && block.timestamp < devLockTime
+            ) {
                 revert("Locked");
             } else if (from == address(this) || from == address(0)) {
                 super._update(from, to, value);
