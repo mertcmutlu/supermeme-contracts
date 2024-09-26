@@ -69,6 +69,8 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     uint256 public previousLockTime;
     uint256 public firstLockTime;
     uint256 public allLocksExpire;
+    uint256 public previousLockTimeStamp;
+    address public lastUser;
 
     uint256 public constant scaledBondingCurveThreshold = 750_000_000;
     uint256 public constant voterCut = 0.005 ether;
@@ -170,6 +172,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             bondingCurveCompleted || scaledBondingCurveCompleted,
             "Curve not done"
         );
+        require(!dexStage, "Already sent");
         if (sendToDexVoters.length == 0) {
             require(balanceOf(msg.sender) >= 1000000 * 10 ** 18, "Low tokens");
             sendToDexVoters.push(msg.sender);
@@ -184,7 +187,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             }
             if (!alreadyVoted) {
                 require(
-                    balanceOf(msg.sender) >= 1000000 * 10 ** 18,
+                    balanceOf(msg.sender) >= 2000000 * 10 ** 18,
                     "Low tokens"
                 );
                 sendToDexVoters.push(msg.sender);
@@ -203,8 +206,6 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             uint256 _ethAmount = totalEtherCollected;
             uint256 _tokenAmount = liquidityThreshold;
             _approve(address(this), address(uniswapV2Router), _tokenAmount);
-            
-            
             uniswapV2Router.addLiquidityETH{value: _ethAmount}(
                 address(this),
                 _tokenAmount,
@@ -299,27 +300,27 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             lockTime[_address] = block.timestamp + tMax;
             firstLockTime = block.timestamp;
             allLocksExpire = block.timestamp + tMax;
+            previousLockTimeStamp = block.timestamp;
+            lastUser = _address;
             return lockTime[_address];
         } else {
             uint256 timePassed = block.timestamp - firstLockTime;
-            previousLockTime = (timePassed > previousLockTime)
-                ? 0
-                : previousLockTime - timePassed;
-
-            uint256 newLockTime = previousLockTime;
-            uint256 scaledReduction = (scaledSupply * previousLockTime) /
-                (MAX_SALE_SUPPLY*4) /
-                4;
+            uint256 newLockTime = checkRemainingLockTime(lastUser);
+            uint256 scaledReduction = (scaledSupply * newLockTime) /
+                (MAX_SALE_SUPPLY*8);
 
             newLockTime = (scaledReduction > previousLockTime)
                 ? 0
                 : newLockTime - scaledReduction;
             if (firstLockTime + timePassed > block.timestamp + newLockTime) {
+                previousLockTimeStamp = block.timestamp;
                 lockTime[_address] = 0;
                 return lockTime[_address];
             }
-
             lockTime[_address] = block.timestamp + newLockTime;
+            previousLockTimeStamp = block.timestamp;
+            previousLockTime = newLockTime;
+            lastUser = _address;
             return lockTime[_address];
         }
     }
@@ -351,14 +352,10 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         return block.timestamp + tMax;
     } else {
         uint256 timePassed = block.timestamp - tempFirstLockTime;
-        tempPreviousLockTime = (timePassed > tempPreviousLockTime)
-            ? 0
-            : tempPreviousLockTime - timePassed;
-
-        uint256 newLockTime = tempPreviousLockTime;
-        uint256 scaledReduction = (scaledSupply * tempPreviousLockTime) /
-            (MAX_SALE_SUPPLY*4) /
-            4;
+        address _address = lastUser;
+        uint256 newLockTime = checkRemainingLockTime(_address);
+        uint256 scaledReduction = (scaledSupply * newLockTime) /
+            (MAX_SALE_SUPPLY*8);
 
         newLockTime = (scaledReduction > tempPreviousLockTime)
             ? 0

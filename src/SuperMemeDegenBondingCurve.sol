@@ -229,3 +229,4 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
         return MAX_SALE_SUPPLY - scaledSupply;
     }
 }
+
