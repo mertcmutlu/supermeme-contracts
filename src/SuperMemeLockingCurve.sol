@@ -304,10 +304,11 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             lastUser = _address;
             return lockTime[_address];
         } else {
+            uint256 s = scaledSupply - 200_000_000;
             uint256 timePassed = block.timestamp - firstLockTime;
             uint256 newLockTime = checkRemainingLockTime(lastUser);
-            uint256 scaledReduction = (scaledSupply * newLockTime) /
-                (MAX_SALE_SUPPLY*8);
+            uint256 scaledReduction = (s * newLockTime) /
+                (MAX_SALE_SUPPLY*16);
 
             newLockTime = (scaledReduction > previousLockTime)
                 ? 0
@@ -347,15 +348,15 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     uint256 tempPreviousLockTime = previousLockTime;
     uint256 tempFirstLockTime = firstLockTime;
     uint256 tempAllLocksExpire = allLocksExpire;
+    uint256 s = scaledSupply - 200_000_000;
 
     if (tempPreviousLockTime == 0 && tempAllLocksExpire == 0) {
         return block.timestamp + tMax;
     } else {
         uint256 timePassed = block.timestamp - tempFirstLockTime;
-        address _address = lastUser;
-        uint256 newLockTime = checkRemainingLockTime(_address);
-        uint256 scaledReduction = (scaledSupply * newLockTime) /
-            (MAX_SALE_SUPPLY*8);
+        uint256 newLockTime = checkRemainingLockTime(lastUser);
+        uint256 scaledReduction = (s * newLockTime) /
+            (MAX_SALE_SUPPLY*16);
 
         newLockTime = (scaledReduction > tempPreviousLockTime)
             ? 0
