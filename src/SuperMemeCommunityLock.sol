@@ -151,7 +151,7 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
             "Slippage"
         );
         payTax(tax);
-        uint256 excessEth = (_buyEth - totalCost > 0) ? _buyEth - totalCost : 0;
+        uint256 excessEth = (_buyEth > totalCost) ? _buyEth - totalCost : 0;
         //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
         totalEtherCollected += cost;
         address buyer = (msg.sender == factoryContract)
@@ -162,7 +162,6 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         if (scaledSupply >= MAX_SALE_SUPPLY) {
             bondingCurveCompleted = true;
         }
-
 
         if (excessEth > 0) {
             payable(buyer).transfer(excessEth);
@@ -197,7 +196,7 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
     function sendToDex() public payable {
         require(bondingCurveCompleted, "Curve not done");
         payTax(sendDexRevenue);
-        console.log("paid tax");
+
         totalEtherCollected -= sendDexRevenue;
         uint256 _ethAmount = totalEtherCollected;
         uint256 _tokenAmount = liquidityThreshold;
@@ -255,12 +254,7 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         address to,
         uint256 value
     ) internal override(ERC20) {
-        console.log("from: ", from);
-        console.log("to: ", to);
-        console.log("address of router: ", address(uniswapV2Router));
-        console.log("address of this: ", address(this));
         if (bondingCurveCompleted && !communityLocked) {
-            console.log("bondingCurveCompleted && !communityLocked");
             super._update(from, to, value);
             if (hasVotedToUnlock[from]) {
                 totalVotes -= value; // Reduce the sender's voting power
@@ -269,22 +263,17 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
                 totalVotes += value; // Increase the recipient's voting power
             }
         } else if (bondingCurveCompleted && communityLocked) {
-            console.log("bondingCurveCompleted && communityLocked");
-            if (from == address(this) && (balanceOf(to) != 0 )) {
-                console.log("from == address(this) && to == address(uniswapV2Router)");
+            if (from == address(this) && (balanceOf(to) != 0)) {
                 super._update(from, to, value);
                 return;
             }
             if (
-                
                 from == address(uniswapV2Router) ||
                 to == address(uniswapV2Router)
             ) {
-                console.log("LOCKEDDDD");
                 revert("Locked");
             }
         } else {
-            console.log("else");
             if (from == address(this) || from == address(0)) {
                 super._update(from, to, value);
                 if (hasVotedToUnlock[from]) {

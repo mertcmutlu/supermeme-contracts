@@ -194,7 +194,7 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         uint256 _ethAmount = totalEtherCollected;
         uint256 _tokenAmount = liquidityThreshold;
         _approve(address(this), address(uniswapV2Router), _tokenAmount);
-        console.log("Adding liquidity to dex");
+
         uniswapV2Router.addLiquidityETH{value: _ethAmount}(
             address(this),
             _tokenAmount,
@@ -243,14 +243,11 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
 
                     uint256 refundAmountForUser = (buyCost[j] *
                         refundAmountForInstance) / ethPaidByOtherUsersInBetween;
-                    (
-                        "transferring due to redistribution",
-                        refundAmountForUser
-                    );
+                    ("transferring due to redistribution", refundAmountForUser);
                     _transfer(address(this), buyIndex[j], refundAmountForUser);
                 }
             }
-            
+
             userRefunded[msg.sender] = true;
         }
         MAX_SALE_SUPPLY -= toBeDistributed / 10 ** 18;
