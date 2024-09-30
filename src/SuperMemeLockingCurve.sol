@@ -72,7 +72,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     uint256 public previousLockTimeStamp;
     address public lastUser;
 
-    uint256 public constant scaledBondingCurveThreshold = 750_000_000;
+    uint256 public constant scaledBondingCurveThreshold = 650_000_000;
     uint256 public constant voterCut = 0.005 ether;
 
     IUniswapV2Router02 public uniswapV2Router;

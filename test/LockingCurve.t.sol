@@ -1,4 +1,9 @@
+// Solidity Version: 0.8.0
+
+
 pragma solidity ^0.8.0;
+
+
 
 import "forge-std/Test.sol";
 import "../src/SuperMemeDegenBondingCurve.sol";
@@ -583,15 +588,12 @@ contract LockingCurve is Test {
             lockingCurve.sellTokens(amount, 0);
             vm.stopPrank();
         }
-
         assert(lockingCurve.dexStage() == false);
         assert(lockingCurve.bondingCurveCompleted() == false);
-        assert(lockingCurve.scaledBondingCurveCompleted() == false);
+        assert(lockingCurve.scaledBondingCurveCompleted() == true);
 
-        //user 3 votes to send to dex
-        vm.startPrank(addresses[2]);
-        vm.expectRevert();
-        lockingCurve.sendToDex();
+
+
 
         //user 1 and 2 rebuy
         for (uint256 j = 0; j < 2; j++) {
@@ -609,7 +611,7 @@ contract LockingCurve is Test {
             assertEq(lockingCurve.balanceOf(addresses[j]), amount * 10 ** 18);
             vm.stopPrank();
         }
-
+        console.log("scaledBondingCurveCompleted", lockingCurve.scaledBondingCurveCompleted());
         assertEq(lockingCurve.scaledBondingCurveCompleted(), true);
 
         //check if users received their eth rewards
@@ -656,7 +658,7 @@ contract LockingCurve is Test {
             lockingCurve.sellTokens(amount, 0);
             vm.stopPrank();
         }
-
+        console.log("scaledBondingCurveCompleted", lockingCurve.scaledBondingCurveCompleted());
         assertEq(lockingCurve.dexStage(), true);
 
         //check if the users can buy tokens from the locking curve
@@ -1229,7 +1231,9 @@ contract LockingCurve is Test {
             //console.log("user", i, "is going to buy 0.04 ether worth of tokens");
             console.log("calculated next lock for user", i, "is", secondsToHumanReadable(nextLockTime - block.timestamp));
             uint256 totalEthCollected = lockingCurve.totalEtherCollected();
+            uint256 totalSupply = lockingCurve.scaledSupply();
             console.log("total ether collected", totalEthCollected);
+            console.log("total supply", totalSupply- 200_000_000);
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
                 amount,
                 100,
