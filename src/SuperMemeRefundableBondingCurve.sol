@@ -142,7 +142,7 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         userBuysPoints[buyer].push(buyCount);
         userBuyPointsEthPaid[buyer].push(_ethBuy - tax);
 
-        totalEthPaidUser[buyer] += _ethBuy - tax;
+        totalEthPaidUser[buyer] += cost;
         totalEtherCollected += cost;
         cumulativeEthCollected[buyCount] +=
             cumulativeEthCollected[buyCount - 1] +
@@ -217,9 +217,10 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         uint256 amountToBeRefundedEth = totalEthPaidUser[msg.sender];
         require(address(this).balance >= amountToBeRefundedEth, "Low ETH");
         uint256 tax = (amountToBeRefundedEth * tradeTax) / tradeTaxDivisor;
+        uint256 _precision = balanceOf(msg.sender) - (toTheCurve + toBeDistributed);
         payTax(tax);
         _burn(msg.sender, toTheCurve);
-        _transfer(msg.sender, address(this), toBeDistributed);
+        _transfer(msg.sender, address(this), toBeDistributed + _precision);
         uint256[] memory userBuyPoints = userBuysPoints[msg.sender];
         for (uint256 i = 0; i < userBuyPoints.length; i++) {
             uint256 buyPoint = userBuyPoints[i];
@@ -243,13 +244,15 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
 
                     uint256 refundAmountForUser = (buyCost[j] *
                         refundAmountForInstance) / ethPaidByOtherUsersInBetween;
-                    ("transferring due to redistribution", refundAmountForUser);
+                    userBalanceScaled[buyIndex[j]] += refundAmountForUser / 10 ** 18;
                     _transfer(address(this), buyIndex[j], refundAmountForUser);
                 }
             }
-
-            userRefunded[msg.sender] = true;
+            
+            
         }
+        userRefunded[msg.sender] = true;
+        userBalanceScaled[msg.sender] = 0;
         MAX_SALE_SUPPLY -= toBeDistributed / 10 ** 18;
         uint256 finalRefundAmount = (amountToBeRefundedEth - tax);
         payable(msg.sender).transfer(finalRefundAmount);
