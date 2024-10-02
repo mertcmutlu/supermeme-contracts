@@ -217,9 +217,10 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         uint256 amountToBeRefundedEth = totalEthPaidUser[msg.sender];
         require(address(this).balance >= amountToBeRefundedEth, "Low ETH");
         uint256 tax = (amountToBeRefundedEth * tradeTax) / tradeTaxDivisor;
+        uint256 _precision = balanceOf(msg.sender) - (toTheCurve + toBeDistributed);
         payTax(tax);
         _burn(msg.sender, toTheCurve);
-        _transfer(msg.sender, address(this), toBeDistributed);
+        _transfer(msg.sender, address(this), toBeDistributed + _precision);
         uint256[] memory userBuyPoints = userBuysPoints[msg.sender];
         for (uint256 i = 0; i < userBuyPoints.length; i++) {
             uint256 buyPoint = userBuyPoints[i];
