@@ -102,7 +102,9 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         scaledSupply = scaledLiquidityThreshold;
         devAddress = _devAdress;
         if (_amount > 0) {
+            require(msg.value >= _buyEth, "Insufficient funds");
             devBuyTokens(_amount, _buyEth);
+            
         }
     }
     function buyTokens(
@@ -372,13 +374,12 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         uint256 _amount,
         uint256 _buyEth
     ) internal nonReentrant {
-        require(_amount > 0, "0 amount");
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
         uint256 totalCost = cost + tax;
-        require(msg.value >= totalCost, "Insufficient funds");
+        require(_buyEth >= totalCost, "Insufficient funds");
         payTax(tax);
-        uint256 excessEth = (msg.value > (totalCost + tax)) ? msg.value - (totalCost + tax) : 0;
+        uint256 excessEth = (_buyEth > (totalCost)) ? _buyEth - (totalCost) : 0;
                 address buyer = (msg.sender == factoryContract)
             ? devAddress
             : msg.sender;
