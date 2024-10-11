@@ -90,10 +90,11 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
         _mint(address(this), liquidityThreshold);
         scaledSupply = scaledLiquidityThreshold;
         devAddress = _devAdress;
-        devLocked = _devLocked;
         devLockTime = block.timestamp + _devLockDuration;
         if (_amount > 0) {
-            devBuyTokens(_amount, _buyEth);
+            require(msg.value >= _buyEth, "Insufficient funds");
+            devBuyTokens(_amount, msg.value);
+            devLocked = _devLocked;
         }
     }
     function buyTokens(
@@ -106,13 +107,14 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
         uint256 totalCost = cost + tax;
         uint256 slippageAmount = (totalCost * _slippage) / 10000;
+        console.log("totalCost inside contract", totalCost + slippageAmount);
         require(cost + tax <= msg.value, "Insufficient funds");
         require(
              msg.value >= totalCost + slippageAmount,
             "Slippage"
         );
         payTax(tax);
-        uint256 excessEth = (msg.value > totalCost) ? msg.value - totalCost : 0;
+        uint256 excessEth = (msg.value > (totalCost)) ? msg.value - (totalCost) : 0;
         totalEtherCollected += cost;
         scaledSupply += _amount;
         if (scaledSupply >= MAX_SALE_SUPPLY) {
@@ -201,6 +203,11 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
         address to,
         uint256 value
     ) internal override(ERC20) {
+        if (devLocked && block.timestamp < devLockTime) {
+            if ((from == devAddress || to == devAddress) && from != address(this) && to != address(this)) {
+                revert("Dev Locked Cant Buy or Sell");
+            }
+        }
         if (bondingCurveCompleted) {
             super._update(from, to, value);
         } else {
@@ -220,18 +227,14 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
     function remainingTokens() public view returns (uint256) {
         return MAX_SALE_SUPPLY - scaledSupply;
     }
-
-
     function devBuyTokens(
         uint256 _amount,
         uint256 _buyEth
     ) internal nonReentrant {
-        require(_amount > 0, "0 amount");
-        require(!bondingCurveCompleted, "Curve done");
-        require(msg.value >= _buyEth, "Insufficient funds");
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
         uint256 totalCost = cost + tax;
+        require(_buyEth >= totalCost, "Insufficient funds");
         payTax(tax);
         uint256 excessEth = (_buyEth > totalCost) ? _buyEth - totalCost : 0;
         totalEtherCollected += cost;
@@ -256,5 +259,7 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
         if (bondingCurveCompleted) {
             sendToDex();
         }
+
+        
     }
 }

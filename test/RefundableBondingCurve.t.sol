@@ -31,7 +31,7 @@ contract RefundableBondingCurveTest is Test {
     address public addr2 = address(0x789);
     address public addr3 = address(0x101112);
 
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
 
 
     function setUp() public {

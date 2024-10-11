@@ -22,7 +22,7 @@ contract TestFactories is Test {
     SuperMemeRegistry public registry;
     SuperMemeRevenueCollector public revenueCollector;
     CommunityLockFactory public communityLockFactory;
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
 
     address public owner = address(0x123);
     address public addr1 = address(0x456);

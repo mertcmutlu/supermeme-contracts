@@ -20,7 +20,8 @@ contract BondingCurvePricingTest is Test {
     SuperMemeDegenBondingCurve public degenbondingcurve;
     RefundableFactory public refundableFactory;
     DegenFactory public degenFactory;
-    uint256 public createTokenRevenue = 0.00001 ether;
+
+    uint256 public createTokenRevenue = 0.0008 ether;
     IUniswapV2Router02 public router;
     SuperMemeRegistry public registry;
     SuperMemeDegenBondingCurve public testTokenInstanceDegen;
@@ -34,7 +35,7 @@ contract BondingCurvePricingTest is Test {
         //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
         //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
 
-        createTokenRevenue = 0.00001 ether;
+        createTokenRevenue = 0.0008 ether;
         router = IUniswapV2Router02(address(0x6682375ebC1dF04676c0c5050934272368e6e883));
         address fakeContract = address(0x12123123);
         unifactory = IUniswapFactory(address(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6));

@@ -103,6 +103,7 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
         devAddress = _devAdress;
         if (_amount > 0) {
+            require(msg.value >= _ethBuy, "Insufficient ETH");
             devBuyTokens(_amount, _ethBuy);
         }
     }
@@ -113,7 +114,7 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         require(!userRefunded[msg.sender], "Refunded");
         require(!bondingCurveCompleted, "Curve done");
         require(_amount > 0, "0 amount");
-        require(refundOnly, "Refund only");
+        require(!refundOnly, "Refund only");
 
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
@@ -127,7 +128,7 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
 
         payTax(tax);
 
-        uint256 excessEth = (msg.value - totalCost > 0) ? msg.value - totalCost : 0;
+        uint256 excessEth = (msg.value > (totalCost)) ? msg.value - (totalCost) : 0;
         address buyer = msg.sender;
         if (excessEth > 0) {
             payable(buyer).transfer(excessEth);
@@ -322,39 +323,35 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         uint256 _amount,
         uint256 _ethBuy
     ) internal nonReentrant {
-        require(_amount > 0, "0 amount");
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
         uint256 totalCost = cost + tax;
-        require(msg.value >= totalCost, "Insufficient ETH");
+        require(_ethBuy >= totalCost, "Insufficient ETH");
         payTax(tax);
-        uint256 excessEth = (_ethBuy - totalCost > 0) ? _ethBuy - totalCost : 0;
-        address buyer = (msg.sender == factoryContract)
-            ? devAddress
-            : msg.sender;
+        uint256 excessEth = (_ethBuy > totalCost) ? _ethBuy - totalCost : 0;
         if (excessEth > 0) {
-            payable(buyer).transfer(excessEth);
+            payable(devAddress).transfer(excessEth);
         }
         buyCount += 1;
-        buyIndex[buyCount] = buyer;
+        buyIndex[buyCount] = devAddress;
         buyCost[buyCount] = _ethBuy - tax;
-        userBuysPoints[buyer].push(buyCount);
-        userBuyPointsEthPaid[buyer].push(_ethBuy - tax);
+        userBuysPoints[devAddress].push(buyCount);
+        userBuyPointsEthPaid[devAddress].push(_ethBuy - tax);
 
-        totalEthPaidUser[buyer] += cost;
+        totalEthPaidUser[devAddress] += cost;
         totalEtherCollected += cost;
         cumulativeEthCollected[buyCount] +=
             cumulativeEthCollected[buyCount - 1] +
             _ethBuy -
             tax;
-        calculateUserBuyPointPercentages(buyer);
-        userBalanceScaled[buyer] += _amount;
+        calculateUserBuyPointPercentages(devAddress);
+        userBalanceScaled[devAddress] += _amount;
         scaledSupply += _amount;
-        _mint(buyer, _amount * 10 ** 18);
+        _mint(devAddress, _amount * 10 ** 18);
 
         uint256 totalSup = totalSupply();
         uint256 price = calculateCost(1);
-        emit tokensBought(_amount, cost, address(this), buyer, totalSup);
+        emit tokensBought(_amount, cost, address(this), devAddress, totalSup);
         emit Price(price, totalSup, address(this), _amount);
 
         if (scaledSupply >= MAX_SALE_SUPPLY) {

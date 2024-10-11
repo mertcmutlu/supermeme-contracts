@@ -261,7 +261,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             revert("No transfer new");
         }
         if (dexStage) {
-            if (checkRemainingLockTime(from) == 0) {
+            if (checkRemainingLockTime(from) == 0 && checkRemainingLockTime(to) == 0) {
                 super._update(from, to, value);
             } else {
                 revert("No transfer");
@@ -378,7 +378,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         uint256 totalCost = cost + tax;
         require(msg.value >= totalCost, "Insufficient funds");
         payTax(tax);
-        uint256 excessEth = (_buyEth > totalCost) ? _buyEth - totalCost : 0;
+        uint256 excessEth = (msg.value > (totalCost + tax)) ? msg.value - (totalCost + tax) : 0;
                 address buyer = (msg.sender == factoryContract)
             ? devAddress
             : msg.sender;

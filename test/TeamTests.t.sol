@@ -20,7 +20,7 @@ contract TeamTests is Test {
     SuperMemeDegenBondingCurve public degenbondingcurve;
     SuperMemeRegistry public registry;
     RefundableFactory public factory;
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
     IUniswapV2Router02 public router;
     SuperMemeDegenBondingCurve public tTokenInstanceDegen;
     SuperMemeRefundableBondingCurve public tTokenInstanceRefund;
@@ -31,8 +31,6 @@ contract TeamTests is Test {
 
 
     function setUp() public {
-        
-        uint256 createTokenRevenue = 0.00001 ether;
         router = IUniswapV2Router02(address(0x5633464856F58Dfa9a358AfAf49841FEE990e30b));
         address fakeContract = address(0x12123123);
         unifactory = IUniswapFactory(address(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6));

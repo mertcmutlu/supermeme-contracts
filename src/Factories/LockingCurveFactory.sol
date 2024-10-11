@@ -27,7 +27,7 @@ contract LockingCurveFactory is Ownable {
 
     ISuperMemeRegistry public superMemeRegistry;
 
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
     address public revenueCollector;
     address[] public tokenAddresses;
 

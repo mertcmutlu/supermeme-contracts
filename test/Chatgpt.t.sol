@@ -38,7 +38,7 @@ contract ChatGPTTest is Test {
 
 
     function setUp() public {
-        createTokenRevenue = 0.00001 ether;
+        createTokenRevenue = 0.0008 ether;
         router = IUniswapV2Router02(
             address(0x5633464856F58Dfa9a358AfAf49841FEE990e30b)
         );

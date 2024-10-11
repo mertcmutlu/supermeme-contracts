@@ -16,7 +16,7 @@ contract TokenSellScenarios is Test {
     IUniswapV2Pair public pair;
     IUniswapFactory public unifactory;    
     SuperMemeDegenBondingCurve public degenbondingcurve;
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
     IUniswapV2Router02 public router;
     SuperMemeRegistry public registry;
     SuperMemeDegenBondingCurve public testTokenInstanceDegen;
@@ -28,7 +28,6 @@ contract TokenSellScenarios is Test {
     address public addr2 = address(0x789);
     address public addr3 = address(0x101112);
     function setUp() public {
-        uint256 createTokenRevenue = 0.00001 ether;
         router = IUniswapV2Router02(address(0x5633464856F58Dfa9a358AfAf49841FEE990e30b));
         address fakeContract = address(0x12123123);
         unifactory = IUniswapFactory(address(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6));

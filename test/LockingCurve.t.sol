@@ -66,7 +66,7 @@ contract LockingCurve is Test {
     }
 
     function setUp() public {
-        addresses = generateMultipleAddresses(5);
+        addresses = generateMultipleAddresses(12);
 
         //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
         //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
@@ -1228,6 +1228,179 @@ contract LockingCurve is Test {
             //console.log("contract lock remaining time for user", i, "is", secondsToHumanReadable(contractLockRemaining));
             vm.stopPrank();
         }
+    }
+
+    function testLocksAfterDex() public {
+        //10 user buys 0.3 eth worth of tokens
+        //buy the tokens
+        for (uint256 i = 0; i < 10; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 scaledSupply = lockingCurve.scaledSupply();
+            uint256 amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.3 ether);
+            uint256 cost = lockingCurve.calculateCost(amount);
+            uint256 tax = cost / 100;
+            uint256 totalCost = cost + tax;
+            uint256 slippage = totalCost / 100;
+            uint256 totalCostWithSlippage = totalCost + slippage;
+            uint256 nextLockTime = lockingCurve.calculateNextLockTime();
+            lockingCurve.buyTokens{value: totalCostWithSlippage}(
+                amount,
+                100
+            );
+            assertEq(lockingCurve.balanceOf(addresses[i]), amount * 10 ** 18);
+            uint256 lockTime = lockingCurve.lockTime(addresses[i]);
+            assertEq(lockTime, nextLockTime);
+            uint256 contractLockRemaining = lockingCurve.checkRemainingLockTime(
+                addresses[i]
+            );
+            vm.warp(block.timestamp + 5 minutes);
+            vm.stopPrank();
+        }
+
+        //vote to send to dex
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            lockingCurve.sendToDex();
+            vm.stopPrank();
+        }
+
+
+        assertEq(lockingCurve.dexStage(), true);
+
+        // try to buy tokens from the locking curve
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            uint256 amount = 150000;
+            uint256 cost = lockingCurve.calculateCost(amount);
+            uint256 tax = cost / 100;
+            uint256 totalCost = cost + tax;
+            uint256 slippage = totalCost / 100;
+            uint256 totalCostWithSlippage = totalCost + slippage;
+            vm.expectRevert();
+            lockingCurve.buyTokens{value: totalCostWithSlippage}(
+                amount,
+                100
+            );
+            vm.stopPrank();
+        }
+
+        // try to sell tokens to the locking curve
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            uint256 amount = 150000;
+            vm.expectRevert();
+            lockingCurve.sellTokens(amount, 0);
+            vm.stopPrank();
+        }
+
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            address[] memory path = new address[](2);
+            path[0] = address(lockingCurve);
+            path[1] = router.WETH();
+            uint256[] memory amounts = router.getAmountsOut(10000000 ether, path);
+
+            lockingCurve.approve(address(router), 10000000 ether);
+            vm.expectRevert();
+            amounts = router.swapExactTokensForETH(
+                10000000 ether,
+                10000 gwei,
+                path,
+                addresses[j],
+                block.timestamp + 10 minutes
+            );
+            vm.stopPrank();
+        }
+
+        //try to buy tokens from the dex
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            address[] memory path = new address[](2);
+            path[0] = router.WETH();
+            path[1] = address(lockingCurve);
+            vm.expectRevert();
+            router.swapExactETHForTokens{value: 0.1 ether}(
+                10000 gwei,
+                path,
+                addresses[j],
+                block.timestamp + 10 minutes
+            );
+            vm.stopPrank();
+        }
+
+        //a new user buys from the dex
+        vm.startPrank(addresses[10]);
+        address[] memory path = new address[](2);
+        path[0] = router.WETH();
+        path[1] = address(lockingCurve);
+        router.swapExactETHForTokens{value: 0.1 ether}(
+            10000 gwei,
+            path,
+            addresses[10],
+            block.timestamp + 10 minutes
+        );
+
+        assertGt(lockingCurve.balanceOf(addresses[10]), 0);
+
+        vm.warp(block.timestamp + 25 hours);
+
+        // a new user buys from the dex
+        vm.startPrank(addresses[11]);
+        path = new address[](2);
+        path[0] = router.WETH();
+        path[1] = address(lockingCurve);
+
+        router.swapExactETHForTokens{value: 0.1 ether}(
+            10000 gwei,
+            path,
+            addresses[11],
+            block.timestamp + 10 minutes
+        );
+
+        assertGt(lockingCurve.balanceOf(addresses[11]), 0);
+
+
+
+
+
+
+        //try to buy tokens from the dex
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            address[] memory path = new address[](2);
+            path[0] = router.WETH();
+            path[1] = address(lockingCurve);
+
+            router.swapExactETHForTokens{value: 0.1 ether}(
+                10000 gwei,
+                path,
+                addresses[j],
+                block.timestamp + 10 minutes
+            );
+            vm.stopPrank();
+        }
+
+        //try to sell tokens to the dex
+        for (uint256 j = 0; j < 5; j++) {
+            uint256 balance = lockingCurve.balanceOf(addresses[j]);
+            vm.startPrank(addresses[j]);
+            address[] memory path = new address[](2);
+            path[0] = address(lockingCurve);
+            path[1] = router.WETH();
+
+            lockingCurve.approve(address(router), balance);
+            router.swapExactTokensForETH(
+                balance,
+                10000 gwei,
+                path,
+                addresses[j],
+                block.timestamp + 10 minutes
+            );
+
+            assertEq(lockingCurve.balanceOf(addresses[j]), 0);
+            vm.stopPrank();
+        }
+
     }
 
 }
