@@ -7,6 +7,16 @@ import "./Interfaces/IUniswapV2Pair.sol";
 import "forge-std/console.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+
+//sendToDex totalEtherCollected yerine contract balance
+//slippage checklerini kaldır
+//sendToDexe slippage ekle
+
+
+
+
+
+
 /*
    ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
   ███    ███ ███    ███   ███    ███   ███    ███   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ ▄██▀▀▀███▀▀▀██▄   ███    ███ 
@@ -44,6 +54,11 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
     bool public refundOnly;
     IUniswapV2Router02 public uniswapV2Router;
     IUniswapV2Pair public uniswapV2Pair;
+
+    uint256 public constant minBuyAmount = 0.01 ether;
+
+
+    
 
     event SentToDex(uint256 ethAmount, uint256 tokenAmount, uint256 timestamp);
     event Price(
@@ -108,31 +123,26 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         }
     }
     function buyTokens(
-        uint256 _amount,
-        uint256 _slippage
+        uint256 _amount
     ) public payable nonReentrant {
         require(!userRefunded[msg.sender], "Refunded");
         require(!bondingCurveCompleted, "Curve done");
         require(_amount > 0, "0 amount");
         require(!refundOnly, "Refund only");
+        //require(msg.value >= minBuyAmount, "Under Minimum Buy Limit of 0.02 ether");
+        require(buyCount < 1000, "Buy count limit reached");
 
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
         uint256 totalCost = cost + tax;
-        uint256 slippageAmount = (totalCost * _slippage) / 10000;
-        require(
-            msg.value >= totalCost + slippageAmount,
-            "Slippage"
-        );
+
         require(msg.value >= totalCost, "Insufficient ETH");
 
         payTax(tax);
 
         uint256 excessEth = (msg.value > (totalCost)) ? msg.value - (totalCost) : 0;
         address buyer = msg.sender;
-        if (excessEth > 0) {
-            payable(buyer).transfer(excessEth);
-        }
+ 
         buyCount += 1;
         buyIndex[buyCount] = buyer;
         buyCost[buyCount] = msg.value - tax;
@@ -161,9 +171,11 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
         if (bondingCurveCompleted) {
             sendToDex();
         }
+
     }
     function calculateUserBuyPointPercentages(address _buyer) internal {
         uint256[] memory userBuyPoints = userBuysPoints[_buyer];
+        delete userBuyPointPercentages[_buyer];
         for (uint256 i = 0; i < userBuyPoints.length; i++) {
             uint256 buyPoint = userBuyPoints[i];
             uint256 cost = buyCost[buyPoint];
@@ -238,7 +250,7 @@ contract SuperMemeRefundableBondingCurve is ERC20, ReentrancyGuard {
                 } else {
                     //check if the user has already been refunded
                     uint256 refundAmountForInstance = (userBuyPointPercentages[
-                        buyIndex[j]
+                        msg.sender
                     ][i] * toBeDistributed) / buyPointScale;
 
                     uint256 refundAmountForUser = (buyCost[j] *

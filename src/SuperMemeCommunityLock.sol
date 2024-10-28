@@ -152,7 +152,6 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         );
         payTax(tax);
         uint256 excessEth = (_buyEth > totalCost) ? _buyEth - totalCost : 0;
-        //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
         totalEtherCollected += cost;
         address buyer = (msg.sender == factoryContract)
             ? devAddress
@@ -171,7 +170,6 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         }
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
-        uint256 remainingTokens = MAX_SALE_SUPPLY - scaledSupply;
 
         emit tokensBought(_amount, cost, address(this), buyer, totalSup);
         emit Price(lastPrice, totalSup, address(this), _amount);

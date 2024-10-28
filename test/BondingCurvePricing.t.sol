@@ -113,7 +113,7 @@ contract BondingCurvePricingTest is Test {
             uint256 totalCost = cost + tax;
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
-            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(amount, 100);
+            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(amount);
             uint256 pricePerToken = testTokenInstanceDegen.calculateCost(1);
             uint256 totalSupply = testTokenInstanceDegen.totalSupply();
             //
@@ -127,12 +127,11 @@ contract BondingCurvePricingTest is Test {
             console.log("i", i);
             uint256 amount = 5000000;
             uint256 cost = testTokenInstanceRefund.calculateCost(amount);
-            uint256 tax = cost / 100;
-            uint256 totalCost = cost + tax;
+            uint256 totalCost = cost + (cost / 100);
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
             vm.roll(block.number + 1);
-            testTokenInstanceRefund.buyTokens{value: totalCostWithSlippage}(amount, 100);
+            testTokenInstanceRefund.buyTokens{value: totalCostWithSlippage}(amount);
             uint256 pricePerToken = testTokenInstanceRefund.calculateCost(1);
             uint256 totalSupply = testTokenInstanceRefund.totalSupply();
             console.log("totalSupply", totalSupply);
@@ -145,24 +144,19 @@ contract BondingCurvePricingTest is Test {
         for (uint256 i = 0; i < 160; i++) {
             uint256 amount = 5000000;
             uint256 cost = testTokenInstanceDegen.calculateCost(amount);
-            uint256 tax = cost / 100;
-            uint256 totalCost = cost + tax;
-            uint256 slippage = totalCost / 100;
-            uint256 totalCostWithSlippage = totalCost + slippage;
+            uint256 totalCost = cost + (cost / 100);
+            uint256 totalCostWithSlippage = totalCost;
             vm.roll(block.number + 1);
-            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(amount, 100);
-            uint256 pricePerToken = testTokenInstanceDegen.calculateCost(1);
-            uint256 totalSupply = testTokenInstanceDegen.totalSupply();
+            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(amount);
+            // uint256 pricePerToken = testTokenInstanceDegen.calculateCost(1);
+            // uint256 totalSupply = testTokenInstanceDegen.totalSupply();
             //console.log("pricePerToken", pricePerToken);
             //
         }
-        //
-        uint256 balance = address(testTokenInstanceDegen).balance;
-        address weth = router.WETH();
 
         address[] memory path = new address[](2);
         path[0] = address(testTokenInstanceDegen);
-        path[1] = (weth);
+        path[1] = router.WETH();
 
         uint256[] memory amounts;
         amounts = router.getAmountsOut(1000000 ether, path);

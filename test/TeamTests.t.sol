@@ -70,7 +70,7 @@ contract TeamTests is Test {
         uint256 totalCost = cost + tax;
         uint256 slippage = totalCost / 100;
 
-        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100);
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
         console.log("user 0 buys 200m tokens");
         console.log("cost: ", totalCost);
         console.log("user 0 balance: ", tTokenInstanceRefund.balanceOf(addresses[0]));
@@ -81,7 +81,7 @@ contract TeamTests is Test {
          tax = cost / 100;
          totalCost = cost + tax;
          slippage = totalCost / 100;
-        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100);
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
         console.log("         ");
         console.log("user 1 buys 200m tokens");
         console.log("cost: ", totalCost);
@@ -106,7 +106,7 @@ contract TeamTests is Test {
             tax = cost / 100;
             totalCost = cost + tax;
             slippage = totalCost / 100;
-            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100);
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
             console.log("         ");
             console.log("user ", i, " buys 100m tokens");
             console.log("          ");
@@ -145,7 +145,7 @@ contract TeamTests is Test {
             tax = cost / 100;
             totalCost = cost + tax;
             slippage = totalCost / 100;
-            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100);
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
             console.log("         ");
             console.log("user ", i, " buys 10m tokens");
             console.log("          ");
@@ -186,7 +186,7 @@ contract TeamTests is Test {
         tax = cost / 100;
         totalCost = cost + tax;
         slippage = totalCost / 100;
-        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100);
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
         console.log("         ");
         console.log("user 8 buys 50m tokens");
         console.log("          ");
@@ -231,7 +231,7 @@ contract TeamTests is Test {
         //     tax = cost / 100;
         //     totalCost = cost + tax;
         //     slippage = cost / 100;
-        //     tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
+        //     tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount),totalCost);
         //     console.log("         ");
         //     console.log("user ", i, " buys 100m tokens");
         //     console.log("          ");

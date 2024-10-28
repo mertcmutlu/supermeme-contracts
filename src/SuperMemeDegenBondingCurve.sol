@@ -70,6 +70,9 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
 
     address public factoryContract;
 
+
+
+
     constructor(
         string memory _name,
         string memory _symbol,
@@ -97,22 +100,19 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
             devLocked = _devLocked;
         }
     }
+
+
+
     function buyTokens(
-        uint256 _amount,
-        uint256 _slippage
+        uint256 _amount
     ) public payable nonReentrant {
         require(_amount > 0, "0 amount");
         require(!bondingCurveCompleted, "Curve done");
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
         uint256 totalCost = cost + tax;
-        uint256 slippageAmount = (totalCost * _slippage) / 10000;
-        console.log("totalCost inside contract", totalCost + slippageAmount);
-        require(cost + tax <= msg.value, "Insufficient funds");
-        require(
-             msg.value >= totalCost + slippageAmount,
-            "Slippage"
-        );
+        require(msg.value >= totalCost, "Insufficient funds");
+ 
         payTax(tax);
         uint256 excessEth = (msg.value > (totalCost)) ? msg.value - (totalCost) : 0;
         totalEtherCollected += cost;
@@ -122,9 +122,7 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
             _amount = MAX_SALE_SUPPLY - (scaledSupply - _amount);
         }
 
-        if (excessEth > 0) {
-            payable(msg.sender).transfer(excessEth);
-        }
+
         _mint(msg.sender, _amount * 10 ** 18);
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
@@ -133,6 +131,9 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
 
         if (bondingCurveCompleted) {
             sendToDex();
+        }
+        if (excessEth > 0) {
+            payable(msg.sender).transfer(excessEth);
         }
     }
     function calculateCost(uint256 amount) public view returns (uint256) {
@@ -150,19 +151,21 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
     function sendToDex() public payable {
         require(bondingCurveCompleted, "Curve not done");
         payTax(sendDexRevenue);
-
         totalEtherCollected -= sendDexRevenue;
-        uint256 _ethAmount = totalEtherCollected;
         uint256 _tokenAmount = liquidityThreshold;
         _approve(address(this), address(uniswapV2Router), _tokenAmount);
+        uint256 _ethAmount = totalEtherCollected;
         uniswapV2Router.addLiquidityETH{value: _ethAmount}(
             address(this),
             _tokenAmount,
             0,
             0,
             address(this),
-            block.timestamp
+            block.timestamp + 1000
         );
+
+
+        console.log("contract balance after add liquidity", address(this).balance);
         emit SentToDex(_ethAmount, _tokenAmount, block.timestamp);
     }
     function sellTokens(
@@ -180,7 +183,7 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
         require(netRefund >= _minimumEthRequired, "Low refund");
         payTax(tax);
         _burn(msg.sender, _amount * 10 ** 18);
-        totalEtherCollected -= netRefund + tax;
+        totalEtherCollected -= (netRefund + tax);
         scaledSupply -= _amount;
 
         payable(msg.sender).transfer(netRefund);
@@ -258,8 +261,6 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
 
         if (bondingCurveCompleted) {
             sendToDex();
-        }
-
-        
+        }   
     }
 }

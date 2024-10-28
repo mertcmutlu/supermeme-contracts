@@ -108,8 +108,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         }
     }
     function buyTokens(
-        uint256 _amount,
-        uint256 _slippage
+        uint256 _amount
     ) public payable nonReentrant {
         require(checkRemainingLockTime(msg.sender) == 0, "Already Bought In");
         require(_amount > 0, "0 amount");
@@ -118,15 +117,9 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         uint256 cost = calculateCost(_amount);
         uint256 tax = (cost * tradeTax) / tradeTaxDivisor;
         uint256 totalCost = cost + tax;
-        uint256 slippageAmount = (totalCost * _slippage) / 10000;
 
-        require(totalCost <= msg.value, "Insufficient funds");
-        require(
-            msg.value >= totalCost + slippageAmount,
-            "Slippage"
-        );
+        require(msg.value >= totalCost, "Insufficient funds");
         payTax(tax);
-        uint256 excessEth = (msg.value > totalCost) ? msg.value - totalCost : 0;
 
         calculateLockingDuration(msg.sender);
         totalEtherCollected += cost;
@@ -139,9 +132,6 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             scaledBondingCurveCompleted = true;
         }
 
-        if (excessEth > 0) {
-            payable(msg.sender).transfer(excessEth);
-        }
 
         _mint(msg.sender, _amount * 10 ** 18);
         uint256 totalSup = totalSupply();
@@ -149,6 +139,10 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
         
         emit tokensBought(_amount, cost, address(this), msg.sender, lockTime[msg.sender]);
         emit Price(lastPrice, totalSup, address(this), _amount);
+        uint256 excessEth = (msg.value > (totalCost)) ? msg.value - (totalCost) : 0;
+        if (excessEth > 0) {
+            payable(msg.sender).transfer(excessEth);
+        }
     }
 
     function calculateCost(uint256 amount) public view returns (uint256) {
@@ -158,6 +152,8 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             10 ** 5) / (3 * SCALE)) * 40000) / 77500;
         return cost;
     }
+
+
     function payTax(uint256 _tax) internal {
         (bool success, ) = revenueCollector.call{value: _tax, gas: 50000}("");
         require(success, "Transfer failed");
@@ -200,7 +196,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             sendDexRevenue = (sendDexRevenue * scaledSupply) / MAX_SALE_SUPPLY;
             payTax(sendDexRevenue);
             totalEtherCollected -= sendDexRevenue;
-            uint256 _ethAmount = totalEtherCollected - voterCut * 5;
+            uint256 _ethAmount = address(this).balance - voterCut * 5 - 1000000;
             uint256 _tokenAmount = liquidityThreshold;
             _approve(address(this), address(uniswapV2Router), _tokenAmount);
             uniswapV2Router.addLiquidityETH{value: _ethAmount}(
@@ -219,6 +215,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
     function sellTokens(uint256 _amount, uint256 _minimumEthRequired) public nonReentrant {
         require(_amount > 0, "0 amount");
         require(!bondingCurveCompleted && !dexStage, "Curve done");
+        require(checkRemainingLockTime(msg.sender) == 0, "Tokens are locked");
         uint256 refund = calculateRefund(_amount);
         uint256 tax = (refund * tradeTax) / tradeTaxDivisor;
         uint256 netRefund = refund - tax;

@@ -74,8 +74,7 @@ contract DegenBondingCurveTest is Test {
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
             degenbondingcurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100
+                amount
             );
             assertEq(degenbondingcurve.balanceOf(address(addr1)), amount * 10 ** 18);
             assertEq(degenbondingcurve.bondingCurveCompleted(), true);
@@ -90,16 +89,14 @@ contract DegenBondingCurveTest is Test {
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
             degenbondingcurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100
+                amount
             );
             assertEq(degenbondingcurve.balanceOf(address(addr1)), amount * 10 ** 18);
             assertEq(degenbondingcurve.bondingCurveCompleted(), true);
 
             vm.expectRevert("Curve done");
             degenbondingcurve.buyTokens{value: totalCostWithSlippage}(
-                    amount,
-                    100
+                    amount
                 );
             vm.expectRevert("Curve done");
             degenbondingcurve.sellTokens(amount,0);
@@ -115,8 +112,7 @@ contract DegenBondingCurveTest is Test {
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
             degenbondingcurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100
+                amount
             );
             assertEq(degenbondingcurve.balanceOf(address(addr1)), amount * 10 ** 18);
             assertEq(degenbondingcurve.bondingCurveCompleted(), true);
@@ -148,8 +144,7 @@ contract DegenBondingCurveTest is Test {
             console.log("totalCostWithSlippage", totalCostWithSlippage);
             vm.expectRevert("Dev Locked Cant Buy or Sell");
             devLockDegen.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100
+                amount
             );
             //dev tries to sell tokens
             vm.expectRevert("Dev Locked Cant Buy or Sell");
@@ -166,8 +161,7 @@ contract DegenBondingCurveTest is Test {
             //dev tries to buy tokens
             vm.expectRevert("Dev Locked Cant Buy or Sell");
             devLockDegen.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100
+                amount
             );
 
             // 5 days passes
@@ -178,8 +172,7 @@ contract DegenBondingCurveTest is Test {
             assertEq(devLockDegen.balanceOf(address(addr3)), 0);
             //dev tries to buy tokens
             devLockDegen.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100
+                amount
             );
             assertEq(devLockDegen.balanceOf(address(addr3)), (amount * 10 ** 18));
 
@@ -194,8 +187,7 @@ contract DegenBondingCurveTest is Test {
         uint256 slippage = totalCost / 100;
         uint256 totalCostWithSlippage = totalCost + slippage;
         devLockDegen.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100
+            amount
         );
         console.log("devLockDegen.balanceOf(address(addr1))", devLockDegen.balanceOf(address(addr1)));
         assertEq(devLockDegen.bondingCurveCompleted(), true);
@@ -209,8 +201,7 @@ contract DegenBondingCurveTest is Test {
         uint256 totalCostWithSlippage2 = totalCost2 + slippage2;
         vm.expectRevert("Curve done");
         devLockDegen.buyTokens{value: totalCostWithSlippage2}(
-            amount,
-            100
+            amount
         );
         //dev tries to sell tokens
         vm.expectRevert("Curve done");

@@ -123,7 +123,7 @@ function testBuyTokensAndRefund() public {
     uint256 totalCost = cost + tax;
     uint256 slip = (totalCost * slippage) / 10000;
     uint256 totalWithSlip = totalCost + slip;
-    tTokenInstanceRefund.buyTokens{value: totalWithSlip}(amountToBuy, slippage);
+    tTokenInstanceRefund.buyTokens{value: totalWithSlip}(amountToBuy);
     assertEq(tTokenInstanceRefund.balanceOf(addr1), amountToBuy * 10 ** 18);
     uint256 initialSupply = tTokenInstanceRefund.totalSupply();
     tTokenInstanceRefund.refund();
@@ -142,7 +142,7 @@ function testRefundAfterBondingCurveCompletion() public {
     uint256 slip = (totalCost * slippage) / 10000;
     uint256 totalWithSlip = totalCost + slip;
     vm.startPrank(addr1);
-    tTokenInstanceRefund.buyTokens{value: totalWithSlip}(tTokenInstanceRefund.MAX_SALE_SUPPLY() - tTokenInstanceRefund.scaledSupply(), 100);
+    tTokenInstanceRefund.buyTokens{value: totalWithSlip}(tTokenInstanceRefund.MAX_SALE_SUPPLY() - tTokenInstanceRefund.scaledSupply());
 
     // Ensure bonding curve is marked as completed
     assertTrue(tTokenInstanceRefund.bondingCurveCompleted());
@@ -151,7 +151,7 @@ function testRefundAfterBondingCurveCompletion() public {
     vm.expectRevert("Curve done");
     tTokenInstanceRefund.refund();
     vm.expectRevert("Curve done");
-    tTokenInstanceRefund.buyTokens{value: totalWithSlip}(1, 100);
+    tTokenInstanceRefund.buyTokens{value: totalWithSlip}(1);
 
     vm.stopPrank();
 }
@@ -173,7 +173,7 @@ function testRefundAfterPartialTokenBurn() public {
     uint256 slip = (totalCost * slippage) / 10000;
     uint256 totalWithSlip = totalCost + slip;
     vm.startPrank(addr1);
-    tTokenInstanceRefund.buyTokens{value: totalWithSlip}(amountToBuy, 100);
+    tTokenInstanceRefund.buyTokens{value: totalWithSlip}(amountToBuy);
 
     tTokenInstanceRefund.refund();
     assertEq(tTokenInstanceRefund.balanceOf(addr1), 0);
@@ -201,7 +201,7 @@ function testStressBuyTokens() public {
         uint256 totalCostWithSlippage = totalCost + slippage;
 
         // Send ETH to buy tokens
-        tTokenInstanceRefund.buyTokens{value: totalCostWithSlippage}(tokensPerPurchase, 100);
+        tTokenInstanceRefund.buyTokens{value: totalCostWithSlippage}(tokensPerPurchase);
         
         // Accumulate total Ether spent
         totalEtherSpent += totalCost - tax;
@@ -233,7 +233,7 @@ function testStressRefundProcess() public {
         uint256 totalPurchaseCost = cost + tax;
         uint256 slippage = totalPurchaseCost / 100;
         uint256 totalPurchaseCostWithSlippage = totalPurchaseCost + slippage;
-        tTokenInstanceRefund.buyTokens{value: totalPurchaseCostWithSlippage}(tokensPerPurchase, 100);
+        tTokenInstanceRefund.buyTokens{value: totalPurchaseCostWithSlippage}(tokensPerPurchase);
         totalCost += totalPurchaseCost;
     }
 
@@ -276,7 +276,7 @@ function testMultipleUsersRefundProcess() public {
         uint256 totalPurchaseCost = cost + tax;
         uint256 slippage = totalPurchaseCost / 100;
         uint256 totalPurchaseCostWithSlippage = totalPurchaseCost + slippage;
-        tTokenInstanceRefund.buyTokens{value: totalPurchaseCostWithSlippage}(tokensPerPurchase, 100);
+        tTokenInstanceRefund.buyTokens{value: totalPurchaseCostWithSlippage}(tokensPerPurchase);
         totalCost += totalPurchaseCost;
         vm.stopPrank();
     }
