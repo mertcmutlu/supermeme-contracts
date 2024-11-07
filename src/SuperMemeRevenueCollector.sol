@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./SuperMemeToken/SuperMemePublicVesting.sol";
+import "./SuperMemeToken/SuperMemeTreasuryVesting.sol";
 import "forge-std/console.sol";
 
 /*
@@ -18,8 +20,11 @@ import "forge-std/console.sol";
 */
 
 contract SuperMemeRevenueCollector is Ownable {
-    ERC20 public mockToken;
-    ERC721 public mockNFT;
+    ERC20 public SPR;
+    ERC721 public SuperDuperNFT;
+
+    SuperMemePublicVesting public publicVesting;
+    SuperMemeTreasuryVesting public treasuryVesting;
 
     uint256 public totalEtherCollected;
     uint256 public nftShare;
@@ -27,17 +32,34 @@ contract SuperMemeRevenueCollector is Ownable {
 
     mapping(uint256 => uint256) public nftLocks;
 
-    constructor() Ownable(msg.sender) {}
+    constructor(address _sprToken, address _publicVesting, address _treasuryVesting) Ownable(msg.sender) {
+        publicVesting = SuperMemePublicVesting(_publicVesting);
+        treasuryVesting = SuperMemeTreasuryVesting(_treasuryVesting);
+        SPR = ERC20(_sprToken);
+    }
 
     receive() external payable {
-        totalEtherCollected += msg.value;
+        totalEtherCollected += (msg.value - msg.value / 100);
         nftShare += msg.value / 100; 
     }
-    function distrubuteRevenue() public payable {}
+    function distrubuteRevenue() public payable {
+        uint256 balanceOfTreasury = SPR.balanceOf(address(treasuryVesting));
+        uint256 balanceOfPublic = SPR.balanceOf(address(publicVesting));
+        uint256 totalBalance = balanceOfTreasury + balanceOfPublic;
+        uint256 treasuryShare = (totalEtherCollected * balanceOfTreasury) / totalBalance;
+        uint256 publicShare = totalEtherCollected - treasuryShare;
+        if (treasuryShare > 0) {
+            treasuryVesting.collectRevenue{value: treasuryShare}();
+        }
+        if (publicShare > 0) {
+            publicVesting.collectRevenue{value: publicShare}();
+        }
+        totalEtherCollected = 0;
+    }
 
     function collectNFTJackpot(uint256 _tokenId) public {
         require(
-            mockNFT.ownerOf(_tokenId) == msg.sender,
+            SuperDuperNFT.ownerOf(_tokenId) == msg.sender,
             "NFT not owned by sender"
         );
         require(
@@ -57,12 +79,12 @@ contract SuperMemeRevenueCollector is Ownable {
                 : 0;
     }
 
-    function setMockToken(address _mockToken) public onlyOwner {
-        mockToken = ERC20(_mockToken);
+    function setSPRToken(address _sprToken) public onlyOwner {
+        SPR = ERC20(_sprToken);
     }
 
-    function setMockNFT(address _mockNFT) public onlyOwner {
-        mockNFT = ERC721(_mockNFT);
+    function setNFT(address _superduperNFT) public onlyOwner {
+        SuperDuperNFT = ERC721(_superduperNFT);
     }
 
     function setLockDuration(uint256 _lockDuration) public onlyOwner {

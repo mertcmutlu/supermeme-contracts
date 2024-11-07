@@ -10,6 +10,9 @@ import "../src/SuperMemeDegenBondingCurve.sol";
 import "../src/Factories/SuperMemeRegistry.sol";
 import "../src/SuperMemeRevenueCollector.sol";
 import "../src/Factories/CommunityLockFactory.sol";
+import "../src/SuperMemeToken/SuperMemePublicVesting.sol";
+import "../src/SuperMemeToken/SuperMemeTreasuryVesting.sol";
+import "../src/SuperMemeToken/SuperMeme.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 //import router
 import {IUniswapV2Router02} from "../src/Interfaces/IUniswapV2Router02.sol";
@@ -28,6 +31,9 @@ contract TestDex is Test {
     SuperMemeRevenueCollector public revenueCollector;
     CommunityLockFactory public communityLockFactory;
     IUniswapV2Router02 public uniswapRouter;
+    SuperMeme public spr;
+    SuperMemeTreasuryVesting public treasuryVesting;
+    SuperMemePublicVesting public publicVesting;
 
     uint256 public createTokenRevenue = 0.0008 ether;
 
@@ -44,7 +50,12 @@ contract TestDex is Test {
 
         uint256 createTokenRevenue = 0.00001 ether;
 
-        revenueCollector = new SuperMemeRevenueCollector();
+        spr = new SuperMeme();
+        publicVesting = new SuperMemePublicVesting(address(spr));
+        treasuryVesting = new SuperMemeTreasuryVesting(address(spr));
+
+
+        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicVesting), address(treasuryVesting));
 
         uniswapRouter = IUniswapV2Router02(address(0x6682375ebC1dF04676c0c5050934272368e6e883));
 

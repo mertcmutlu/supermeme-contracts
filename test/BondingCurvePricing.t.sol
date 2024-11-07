@@ -11,6 +11,9 @@ import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 //import uniswap pair
 import {IUniswapV2Pair} from "../src/Interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router02} from "../src/Interfaces/IUniswapV2Router02.sol";
+import "../src/SuperMemeToken/SuperMemePublicVesting.sol";
+import "../src/SuperMemeToken/SuperMemeTreasuryVesting.sol";
+import "../src/SuperMemeToken/SuperMeme.sol";
 
 contract BondingCurvePricingTest is Test {
     uint256 public dummyBuyAmount = 1000;
@@ -20,6 +23,11 @@ contract BondingCurvePricingTest is Test {
     SuperMemeDegenBondingCurve public degenbondingcurve;
     RefundableFactory public refundableFactory;
     DegenFactory public degenFactory;
+
+    SuperMeme public spr;
+    SuperMemePublicVesting public publicVesting;
+    SuperMemeTreasuryVesting public treasuryVesting;
+
 
     uint256 public createTokenRevenue = 0.0008 ether;
     IUniswapV2Router02 public router;
@@ -54,7 +62,12 @@ contract BondingCurvePricingTest is Test {
         vm.deal(addr2, 1000 ether);
         vm.startPrank(addr1);
 
-        revenueCollector = new SuperMemeRevenueCollector();
+        spr = new SuperMeme();
+        publicVesting = new SuperMemePublicVesting(address(spr));
+        treasuryVesting = new SuperMemeTreasuryVesting(address(spr));
+
+
+        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicVesting), address(treasuryVesting));
         registry = new SuperMemeRegistry();
 
 

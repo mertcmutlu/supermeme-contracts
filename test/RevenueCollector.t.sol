@@ -3,11 +3,18 @@ pragma solidity ^0.8.0;
 import "../src/MockTokens/MockNFT.sol";
 import "../src/SuperMemeRevenueCollector.sol";
 import "forge-std/Test.sol";
+import "../src/SuperMemeToken/SuperMemePublicVesting.sol";
+import "../src/SuperMemeToken/SuperMemeTreasuryVesting.sol";
+import "../src/SuperMemeToken/SuperMeme.sol";
 
 contract TestRevenueCollector is Test {
 
     MockNFT public mockNFT;
     SuperMemeRevenueCollector public revenueCollector;
+    SuperMeme public spr;
+    SuperMemePublicVesting public publicVesting;
+    SuperMemeTreasuryVesting public treasuryVesting;
+
 
     address public owner = address(0x123);
     address public addr1 = address(0x456);
@@ -20,10 +27,17 @@ contract TestRevenueCollector is Test {
         vm.deal(addr1, 1000 ether);
         vm.deal(addr2, 1000 ether);
 
+
         vm.startPrank(owner);
+
+        spr = new SuperMeme();
+        publicVesting = new SuperMemePublicVesting(address(spr));
+        treasuryVesting = new SuperMemeTreasuryVesting(address(spr));
+
+
         mockNFT = new MockNFT(owner);
-        revenueCollector = new SuperMemeRevenueCollector();
-        revenueCollector.setMockNFT(address(mockNFT));
+        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicVesting), address(treasuryVesting));
+        revenueCollector.setNFT(address(mockNFT));
         vm.stopPrank();
 
     }
