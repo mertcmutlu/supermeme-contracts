@@ -27,15 +27,17 @@ contract SuperMemeTreasuryVesting is Ownable {
     uint256[2] public marketingLocks = [30 days, 730 days];
     uint256[2] public liquidityLocks = [0 days, 730 days];
     uint256[2] public airdropLocks = [30 days, 30 days];
-    uint256[2] public advisorLocks = [180 days, 365 days];
-    uint256[2] public advisor2Locks = [30 days, 365 days];
+    // uint256[2] public advisorLocks = [180 days, 365 days];
+    // uint256[2] public advisor2Locks = [30 days, 365 days];
 
-    address public constant TEAM = 0x34567890abCdEF1234567890abcDeF1234567890;
-    address public constant TREASURY = 0x234567890abCDEf1234567890aBCdEf123456789;
-    address public constant DEVELOPMENT = 0x234567890abCdeF1234567890AbCDef123456788;
-    address public constant MARKETING = 0x34567890abCDEf1234567890aBCDEf1234567892;
-    address public constant LIQUIDITY = 0x4567890abcdEf1234567890ABcDEF12345678901;
-    address public constant AIRDROP = 0x567890abCdeF1234567890abCdEF123456789012;
+    address public constant TEAM = 0xEcd2369e23Fb21458aa41f7fb1cB1013913D97EA;
+    address public constant TREASURY = 0xc674f8D0bBC54f8eB7e7c32d6b6E11dC07f01Af5;
+    address public constant DEVELOPMENT = 0x86F13a708347611346B37457D3A5666e33630dA6;
+    address public constant MARKETING = 0x8614a5372E87511a93568d756469CCc06c5a3393;
+    address public constant LIQUIDITY = 0x4049C6d09D7c1C93D70181650279100E4D018D3D;
+    address public constant AIRDROP = 0x137d220Fb68F637e98773E39aB74E466C773AC20;
+    address public constant ADVISOR = 0xb1683022cDE0d8d69b4c458F52610f6Fd4e83D66;
+
 
     uint256 public constant TREASURY_AMOUNT = 200_000_000 ether;
     uint256 public constant DEVELOPMENT_AMOUNT = 80_000_000 ether;
@@ -43,8 +45,6 @@ contract SuperMemeTreasuryVesting is Ownable {
     uint256 public constant LIQUIDITY_AMOUNT = 180_000_000 ether;
     uint256 public constant AIRDROP_AMOUNT = 30_000_000 ether;
     uint256 public constant TEAM_AMOUNT = 150_000_000 ether;
-
-
 
     // Mapping of advisors to their individual vesting schedules
     mapping(address => Vesting) public advisorVestingSchedule;
@@ -54,33 +54,35 @@ contract SuperMemeTreasuryVesting is Ownable {
 
     address[] public advisors;
 
+    uint256 public tgeDate;
+
     struct Vesting {
         uint256 cliffEnd;
-        uint256 vestingStart;
         uint256 vestingEnd;
         uint256 totalAmount;
     }
 
-    constructor(address _stakingToken) Ownable(msg.sender){
+    constructor(address _stakingToken, uint256 _tgeDate) Ownable(msg.sender){
         stakingToken = IERC20(_stakingToken);
+        tgeDate = _tgeDate;
         initializeVestingSchedules();
-        
     }
 
     // --- External/Public Functions ---
 
-    function addAdvisor(address advisor, uint256 amount) onlyOwner external {
+    function addAdvisor(address advisor, uint256 amount, uint256 _cliffDuration, uint256 _vestingDuration) external {
+        require(msg.sender == ADVISOR, "Only owner can add advisor");
         require(advisorVestingSchedule[advisor].vestingEnd == 0, "Advisor already added");
 
         // Initialize advisor vesting schedule
         advisors.push(advisor);
         advisorVestingSchedule[advisor] = Vesting(
-            block.timestamp + advisorLocks[0],
-            block.timestamp + advisorLocks[0],
-            block.timestamp + advisorLocks[1],
+            tgeDate + _cliffDuration,
+            tgeDate + _cliffDuration + _vestingDuration,
             amount
         );
 
+        _updateRewards(advisor);
         // Update contract state
         balance[advisor] += amount;
         totalSupply += amount;
@@ -103,12 +105,10 @@ contract SuperMemeTreasuryVesting is Ownable {
         if (advisorVestingSchedule[msg.sender].vestingEnd > 0) {
             require(advisorVestingSchedule[msg.sender].totalAmount == amount, "Amount does not match advisor vesting amount");
         } else {
-
             require(vestingSchedule[msg.sender].totalAmount == amount, "Amount does not match vesting amount");
         }
         stakingToken.transferFrom(msg.sender, address(this), amount);
         _updateRewards(msg.sender);
-
 
         balance[msg.sender] += amount;
         totalSupply += amount;
@@ -119,15 +119,14 @@ contract SuperMemeTreasuryVesting is Ownable {
         require(balance[msg.sender] > 0, "Not staked yet :) ");
         uint256 amount = getUnlockedAmount(msg.sender);
         require(block.timestamp > getCliffEnd(msg.sender), "Cliff period not reached");
-        stakingToken.transfer(msg.sender, amount);
-        _updateRewards(msg.sender);
+        require(amount > 0, "No unlocked amount");
         claim();
+        stakingToken.transfer(msg.sender, amount);
         
-
+        
         balance[msg.sender] -= amount;
         totalSupply -= amount;
-        totalUnlockedAndClaimed[msg.sender] += amount;
-        
+        totalUnlockedAndClaimed[msg.sender] += amount;        
     }
 
     function claim() public returns (uint256) {
@@ -163,12 +162,14 @@ contract SuperMemeTreasuryVesting is Ownable {
 
 
     function initializeVestingSchedules() internal {
-        vestingSchedule[TEAM] = Vesting(block.timestamp + teamLocks[0], block.timestamp, block.timestamp + teamLocks[1] + teamLocks[0], TEAM_AMOUNT);
-        vestingSchedule[TREASURY] = Vesting(block.timestamp + treasuryLocks[0], block.timestamp, block.timestamp + treasuryLocks[1] + treasuryLocks[0], TREASURY_AMOUNT);
-        vestingSchedule[DEVELOPMENT] = Vesting(block.timestamp + developmentLocks[0], block.timestamp, block.timestamp + developmentLocks[1]+ developmentLocks[0], DEVELOPMENT_AMOUNT);
-        vestingSchedule[MARKETING] = Vesting(block.timestamp + marketingLocks[0], block.timestamp, block.timestamp + marketingLocks[1]+ marketingLocks[0], MARKETING_AMOUNT);
-        vestingSchedule[LIQUIDITY] = Vesting(block.timestamp + liquidityLocks[0], block.timestamp, block.timestamp + liquidityLocks[1]+ liquidityLocks[0], LIQUIDITY_AMOUNT);
-        vestingSchedule[AIRDROP] = Vesting(block.timestamp + airdropLocks[0], block.timestamp, block.timestamp + airdropLocks[1]+ airdropLocks[0], AIRDROP_AMOUNT);
+        vestingSchedule[TEAM] = Vesting(tgeDate + teamLocks[0], tgeDate + teamLocks[1] + teamLocks[0], TEAM_AMOUNT);
+        vestingSchedule[TREASURY] = Vesting(tgeDate + treasuryLocks[0], tgeDate + treasuryLocks[1] + treasuryLocks[0], TREASURY_AMOUNT);
+        vestingSchedule[DEVELOPMENT] = Vesting(tgeDate + developmentLocks[0], tgeDate + developmentLocks[1] + developmentLocks[0], DEVELOPMENT_AMOUNT);
+        vestingSchedule[MARKETING] = Vesting(tgeDate + marketingLocks[0], tgeDate + marketingLocks[1] + marketingLocks[0], MARKETING_AMOUNT);
+        vestingSchedule[LIQUIDITY] = Vesting(tgeDate + liquidityLocks[0], tgeDate + liquidityLocks[1] + liquidityLocks[0], LIQUIDITY_AMOUNT);
+        vestingSchedule[AIRDROP] = Vesting(tgeDate + airdropLocks[0], tgeDate + airdropLocks[1] + airdropLocks[0], AIRDROP_AMOUNT);
+
+        
     }
 
     function _calculateRewards(address account) private view returns (uint256) {
@@ -179,7 +180,6 @@ contract SuperMemeTreasuryVesting is Ownable {
     function _updateRewards(address account) private {
         earned[account] += _calculateRewards(account);
         rewardIndexOf[account] = rewardIndex;
-        console.log("earned[account]: ", earned[account]);
     }
 
     function isEligibleForVesting(address account) internal view returns (bool) {
@@ -187,7 +187,6 @@ contract SuperMemeTreasuryVesting is Ownable {
     }
 
     function getVestingSchedule(address account) internal view returns (Vesting memory) {
-        //check if the account is advisor or not
         if (advisorVestingSchedule[account].vestingEnd > 0) {
             return advisorVestingSchedule[account];
         } else {
@@ -208,6 +207,7 @@ contract SuperMemeTreasuryVesting is Ownable {
     }
 
     function getCliffEnd(address account) internal view returns (uint256) {
+        console.log("getVestingSchedule(account).cliffEnd: ", getVestingSchedule(account).cliffEnd);
         return getVestingSchedule(account).cliffEnd;
     }
 }

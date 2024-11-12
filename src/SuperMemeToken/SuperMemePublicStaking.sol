@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract SuperMemePublicVesting is ERC721, ERC721Enumerable {
+contract SuperMemePublicStaking is ERC721, ERC721Enumerable {
     IERC20 public immutable stakingToken;
     uint256 public nextTokenId;
     
@@ -20,15 +20,19 @@ contract SuperMemePublicVesting is ERC721, ERC721Enumerable {
     }
     
     mapping(uint256 => StakeInfo) public stakeInfo;
-
+    
     // Lock periods and corresponding bonuses
+    uint256 public constant FIFTEEN_DAYS = 15 days;
     uint256 public constant ONE_MONTH = 30 days;
     uint256 public constant THREE_MONTHS = 90 days;
     uint256 public constant SIX_MONTHS = 180 days;
-    uint256 public constant BONUS_THREE_MONTHS = 500; // 5% bonus
-    uint256 public constant BONUS_SIX_MONTHS = 1500;  // 15% bonus
 
-    uint256 bonusScale = 10000;
+    uint256 public constant FIFTEEN_DAYS_BONUS = 1;
+    uint256 public constant ONE_MONTH_BONUS = 2;
+    uint256 public constant THREE_MONTHS_BONUS = 4;
+    uint256 public constant SIX_MONTHS_BONUS = 8;
+
+
 
     // Reward distribution variables
     uint256 public rewardIndex; // Accumulated reward per token
@@ -44,27 +48,30 @@ contract SuperMemePublicVesting is ERC721, ERC721Enumerable {
     constructor(address _stakingToken) ERC721("SuperMemeStakeNFT", "SMNFT") {
         stakingToken = IERC20(_stakingToken);
     }
-
-    // --- External/Public Functions ---
-
     function stake(uint256 amount, uint256 lockPeriod) external returns (uint256) {
         require(amount > 0, "Stake amount must be greater than zero");
         require(
-            lockPeriod == ONE_MONTH || lockPeriod == THREE_MONTHS || lockPeriod == SIX_MONTHS,
+            lockPeriod == FIFTEEN_DAYS ||
+            lockPeriod == ONE_MONTH ||
+            lockPeriod == THREE_MONTHS ||
+            lockPeriod == SIX_MONTHS,
             "Invalid lock period"
         );
 
         uint256 revenueShareBonus = 1;
-        if (lockPeriod == THREE_MONTHS) {
-            revenueShareBonus = BONUS_THREE_MONTHS;
+        if (lockPeriod == FIFTEEN_DAYS) {
+            revenueShareBonus = FIFTEEN_DAYS_BONUS;
+        } else if (lockPeriod == ONE_MONTH) {
+            revenueShareBonus = ONE_MONTH_BONUS;
+        } else if (lockPeriod == THREE_MONTHS) {
+            revenueShareBonus = THREE_MONTHS_BONUS;
         } else if (lockPeriod == SIX_MONTHS) {
-            revenueShareBonus = BONUS_SIX_MONTHS;
+            revenueShareBonus = SIX_MONTHS_BONUS;
         }
-
         // Transfer staking tokens
         stakingToken.transferFrom(msg.sender, address(this), amount);
 
-        uint256 receivedShares = amount * revenueShareBonus / bonusScale;
+        uint256 receivedShares = amount * revenueShareBonus;
         totalSharesAmount += receivedShares;
         totalStaked += amount;
 
@@ -93,7 +100,6 @@ contract SuperMemePublicVesting is ERC721, ERC721Enumerable {
         StakeInfo memory stakeMem = stakeInfo[tokenId];
         require(block.timestamp >= stakeMem.lockEnd, "Lock period not over");
 
-        _updateRewards(tokenId);
         claimReward(tokenId);
 
         totalSharesAmount -= stakeMem.sharesAmount;
@@ -164,6 +170,14 @@ contract SuperMemePublicVesting is ERC721, ERC721Enumerable {
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    function getStakeInfo(uint256 tokenId)
+        external
+        view
+        returns (StakeInfo memory)
+    {
+        return stakeInfo[tokenId];
     }
 }
 

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "../src/MockTokens/MockNFT.sol";
 import "../src/SuperMemeRevenueCollector.sol";
 import "forge-std/Test.sol";
-import "../src/SuperMemeToken/SuperMemePublicVesting.sol";
+import "../src/SuperMemeToken/SuperMemePublicStaking.sol";
 import "../src/SuperMemeToken/SuperMemeTreasuryVesting.sol";
 import "../src/SuperMemeToken/SuperMeme.sol";
 
@@ -12,8 +12,10 @@ contract TestRevenueCollector is Test {
     MockNFT public mockNFT;
     SuperMemeRevenueCollector public revenueCollector;
     SuperMeme public spr;
-    SuperMemePublicVesting public publicVesting;
+    SuperMemePublicStaking public publicStaking;
     SuperMemeTreasuryVesting public treasuryVesting;
+
+    uint256 public tgeDate = 1732482000;
 
 
     address public owner = address(0x123);
@@ -31,12 +33,12 @@ contract TestRevenueCollector is Test {
         vm.startPrank(owner);
 
         spr = new SuperMeme();
-        publicVesting = new SuperMemePublicVesting(address(spr));
-        treasuryVesting = new SuperMemeTreasuryVesting(address(spr));
+        publicStaking = new SuperMemePublicStaking(address(spr));
+        treasuryVesting = new SuperMemeTreasuryVesting(address(spr), tgeDate);
 
 
         mockNFT = new MockNFT(owner);
-        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicVesting), address(treasuryVesting));
+        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicStaking), address(treasuryVesting));
         revenueCollector.setNFT(address(mockNFT));
         vm.stopPrank();
 
@@ -50,14 +52,14 @@ contract TestRevenueCollector is Test {
     function testReceive() public {
         vm.startPrank(addr1);
         payable(revenueCollector).call{value: 100 ether, gas: 3000000}("");
-        assertEq(revenueCollector.totalEtherCollected(), 100 ether);
+        assertEq(revenueCollector.totalEtherCollected(), 99 ether);
         assertEq(revenueCollector.nftShare(), 1 ether);
     }
 
     function testCollectNFTJackpot() public {
         vm.startPrank(owner);
         payable(revenueCollector).call{value: 100 ether, gas: 3000000}("");
-        assertEq(revenueCollector.totalEtherCollected(), 100 ether);
+        assertEq(revenueCollector.totalEtherCollected(), 99 ether);
         assertEq(revenueCollector.nftShare(), 1 ether);
         console.log("before collectNFTJackpot");
         revenueCollector.collectNFTJackpot(0);

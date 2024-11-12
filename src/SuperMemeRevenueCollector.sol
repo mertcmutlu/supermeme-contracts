@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./SuperMemeToken/SuperMemePublicVesting.sol";
+import "./SuperMemeToken/SuperMemePublicStaking.sol";
 import "./SuperMemeToken/SuperMemeTreasuryVesting.sol";
 import "forge-std/console.sol";
 
@@ -23,7 +23,7 @@ contract SuperMemeRevenueCollector is Ownable {
     ERC20 public SPR;
     ERC721 public SuperDuperNFT;
 
-    SuperMemePublicVesting public publicVesting;
+    SuperMemePublicStaking public publicStaking;
     SuperMemeTreasuryVesting public treasuryVesting;
 
     uint256 public totalEtherCollected;
@@ -32,8 +32,8 @@ contract SuperMemeRevenueCollector is Ownable {
 
     mapping(uint256 => uint256) public nftLocks;
 
-    constructor(address _sprToken, address _publicVesting, address _treasuryVesting) Ownable(msg.sender) {
-        publicVesting = SuperMemePublicVesting(_publicVesting);
+    constructor(address _sprToken, address _publicStaking, address _treasuryVesting) Ownable(msg.sender) {
+        publicStaking = SuperMemePublicStaking(_publicStaking);
         treasuryVesting = SuperMemeTreasuryVesting(_treasuryVesting);
         SPR = ERC20(_sprToken);
     }
@@ -42,17 +42,17 @@ contract SuperMemeRevenueCollector is Ownable {
         totalEtherCollected += (msg.value - msg.value / 100);
         nftShare += msg.value / 100; 
     }
-    function distrubuteRevenue() public payable {
+    function distributeRevenue() public payable {
         uint256 balanceOfTreasury = SPR.balanceOf(address(treasuryVesting));
-        uint256 balanceOfPublic = SPR.balanceOf(address(publicVesting));
-        uint256 totalBalance = balanceOfTreasury + balanceOfPublic;
+        uint256 balanceOfPublicStaking = SPR.balanceOf(address(publicStaking));
+        uint256 totalBalance = balanceOfTreasury + balanceOfPublicStaking;
         uint256 treasuryShare = (totalEtherCollected * balanceOfTreasury) / totalBalance;
         uint256 publicShare = totalEtherCollected - treasuryShare;
         if (treasuryShare > 0) {
             treasuryVesting.collectRevenue{value: treasuryShare}();
         }
         if (publicShare > 0) {
-            publicVesting.collectRevenue{value: publicShare}();
+            publicStaking.collectRevenue{value: publicShare}();
         }
         totalEtherCollected = 0;
     }

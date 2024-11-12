@@ -9,13 +9,15 @@ import "../src/Factories/SuperMemeRegistry.sol";
 import "../src/SuperMemeRevenueCollector.sol";
 import "../src/Factories/CommunityLockFactory.sol";
 import "../src/SuperMemeToken/SuperMeme.sol";
-import "../src/SuperMemeToken/SuperMemePublicVesting.sol";
+import "../src/SuperMemeToken/SuperMemePublicStaking.sol";
 import "../src/SuperMemeToken/SuperMemeTreasuryVesting.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 
 contract TGETest is Test {
     uint256 public dummyBuyAmount = 1000;
     uint256 public dummyBuyAmount2 = 1000000;
+
+    uint256 public tgeDate = 1732482000;
 
     IUniswapFactory public uniswapFactory;
     RefundableFactory public refundableFactory;
@@ -26,7 +28,7 @@ contract TGETest is Test {
     SuperMemeRevenueCollector public revenueCollector;
     CommunityLockFactory public communityLockFactory;
 
-    SuperMemePublicVesting public publicVesting;
+    SuperMemePublicStaking public publicStaking;
     SuperMemeTreasuryVesting public treasuryVesting;
     SuperMeme public spr;
 
@@ -34,25 +36,35 @@ contract TGETest is Test {
     SuperMemeRefundableBondingCurve public refundableBondingCurve;
     SuperMemeLockingCurve public lockingCurve;
 
+
+    // address public constant TEAM = 0xEcd2369e23Fb21458aa41f7fb1cB1013913D97EA;
+    // address public constant TREASURY = 0xc674f8D0bBC54f8eB7e7c32d6b6E11dC07f01Af5;
+    // address public constant DEVELOPMENT = 0x86F13a708347611346B37457D3A5666e33630dA6;
+    // address public constant MARKETING = 0x8614a5372E87511a93568d756469CCc06c5a3393;
+    // address public constant LIQUIDITY = 0x4049C6d09D7c1C93D70181650279100E4D018D3D;
+    // address public constant AIRDROP = 0x137d220Fb68F637e98773E39aB74E466C773AC20;
+    // address public constant ADVISOR = 0xb1683022cDE0d8d69b4c458F52610f6Fd4e83D66;
+
+
     uint256 public createTokenRevenue = 0.0008 ether;
 
-    address public constant SEED = 0xA1A1a1a1A1A1A1A1A1a1a1a1a1a1A1A1a1A1a1a1;
+    address public constant SEED = 0xB7918aF63C7Db61F1c1152C3bc4EfBd9F36dEab6;
     uint256 public constant SEED_AMOUNT = 30_000_000 ether;
 
-    address public constant OPENS = 0xb2b2b2b2b2B2b2B2B2b2b2B2B2b2B2B2b2b2b2b2;
+    address public constant OPENS = 0x65C5d8417AF968CB711A5eD3220E665e617EF4A6;
     uint256 public constant OPENS_AMOUNT = 133_000_000 ether;
 
-    address public constant KOL = 0xc3c3c3c3c3c3c3c3c3C3C3c3C3C3C3c3C3C3c3c3;
+    address public constant KOL = 0xa4fbf15678aD52ea675C4FA4EA0f8617781D6Ef4;
     uint256 public constant KOL_AMOUNT = 27_000_000 ether;
 
-    address public constant PUBLIC = 0xd4d4d4D4D4d4d4d4d4D4d4D4d4d4d4d4d4d4D4d4;
+    address public constant PUBLIC = 0x53Ad0aF41dD7008e19B666A3fbe175B6215669F3;
     uint256 public constant PUBLIC_AMOUNT = 50_000_000 ether;
 
-    address public constant TEAM = 0x34567890abCdEF1234567890abcDeF1234567890;
+    address public constant TEAM = 0xEcd2369e23Fb21458aa41f7fb1cB1013913D97EA;
     uint256 public constant TEAM_AMOUNT = 150_000_000 ether;
 
     address public constant TREASURY =
-        0x234567890abCDEf1234567890aBCdEf123456789;
+        0xc674f8D0bBC54f8eB7e7c32d6b6E11dC07f01Af5;
     uint256 public constant TREASURY_AMOUNT = 200_000_000 ether;
 
     address public constant DEVELOPMENT =
@@ -64,7 +76,7 @@ contract TGETest is Test {
     uint256 public constant MARKETING_AMOUNT = 90_000_000 ether;
 
     address public constant LIQUIDITY =
-        0x4567890abcdEf1234567890ABcDEF12345678901;
+        0x4049C6d09D7c1C93D70181650279100E4D018D3D;
     uint256 public constant LIQUIDITY_AMOUNT = 180_000_000 ether;
 
     address public constant AIRDROP =
@@ -72,21 +84,28 @@ contract TGETest is Test {
     uint256 public constant AIRDROP_AMOUNT = 30_000_000 ether;
 
     address public constant ADVISOR =
-        0x67890ABCDEf1234567890abcdef1234567890123;
+        0xb1683022cDE0d8d69b4c458F52610f6Fd4e83D66;
     uint256 public constant ADVISOR_AMOUNT = 30_000_000 ether;
 
     address public owner = address(0x123);
     address public addr1 = address(0x456);
     address public addr2 = address(0x789);
     address public addr3 = address(0x101112);
+    address public addr4 = address(0x131415);
 
+    uint256 public constant FIFTEEN_DAYS = 15 days;
     uint256 public constant ONE_MONTH = 30 days;
     uint256 public constant THREE_MONTHS = 90 days;
     uint256 public constant SIX_MONTHS = 180 days;
-    uint256 public constant BONUS_THREE_MONTHS = 500; // 5% bonus
-    uint256 public constant BONUS_SIX_MONTHS = 1500;  // 15% bonus
+
+    uint256 public constant FIFTEEN_DAYS_BONUS = 1;
+    uint256 public constant ONE_MONTH_BONUS = 2;
+    uint256 public constant THREE_MONTHS_BONUS = 4;
+    uint256 public constant SIX_MONTHS_BONUS = 8;
+
 
     uint256 createTokenRevenueAfterJackpot;
+
 
 
     function setUp() public {
@@ -108,17 +127,19 @@ contract TGETest is Test {
         vm.deal(ADVISOR, 1000 ether);
 
         uint256 createTokenRevenue = 0.0008 ether;
+
+        vm.startPrank(owner);
         
 
         spr = new SuperMeme();
 
         //imitate the minted tokens addresses so we can use them to call transfer tokens
-        publicVesting = new SuperMemePublicVesting(address(spr));
-        treasuryVesting = new SuperMemeTreasuryVesting(address(spr));
+        publicStaking = new SuperMemePublicStaking(address(spr));
+        treasuryVesting = new SuperMemeTreasuryVesting(address(spr), tgeDate);
 
         revenueCollector = new SuperMemeRevenueCollector(
             address(spr),
-            address(publicVesting),
+            address(publicStaking),
             address(treasuryVesting)
         );
 
@@ -153,6 +174,7 @@ contract TGETest is Test {
             0,
             0
         );
+        vm.stopPrank();
 
         vm.startPrank(addr1);
 
@@ -177,6 +199,9 @@ contract TGETest is Test {
         lockingCurve = SuperMemeLockingCurve(LockingToken);
 
         createTokenRevenueAfterJackpot = (createTokenRevenue * 3) * 99 / 100;
+        console.log("timestamp before warp", block.timestamp);
+        vm.warp(tgeDate);
+        console.log("timestamp after warp", block.timestamp);
     }
     function testDeploy() public {
         assertEq(degenFactory.revenueCollector(), (address(revenueCollector)));
@@ -216,7 +241,7 @@ contract TGETest is Test {
         assertEq(treasuryVesting.totalSupply(), TEAM_AMOUNT + TREASURY_AMOUNT);
         assertEq(treasuryVesting.balance(address(TEAM)), TEAM_AMOUNT);
 
-        revenueCollector.distrubuteRevenue();
+        revenueCollector.distributeRevenue();
         assertEq(revenueCollector.totalEtherCollected(), 0);
         assertEq(treasuryVesting.allTimeRevenueCollected(), (createTokenRevenue * 3) * 99 / 100);
         vm.stopPrank();
@@ -240,7 +265,7 @@ contract TGETest is Test {
         assertEq(treasuryVesting.totalSupply(), TEAM_AMOUNT + TREASURY_AMOUNT);
         assertEq(treasuryVesting.balance(address(TEAM)), TEAM_AMOUNT);
         
-        revenueCollector.distrubuteRevenue();
+        revenueCollector.distributeRevenue();
         assertEq(revenueCollector.totalEtherCollected(), 0);
         assertEq(treasuryVesting.allTimeRevenueCollected(), createTokenRevenueAfterJackpot);
         vm.stopPrank();
@@ -284,7 +309,7 @@ contract TGETest is Test {
 
         vm.startPrank(addr1);
 
-        revenueCollector.distrubuteRevenue();
+        revenueCollector.distributeRevenue();
         vm.stopPrank();
 
         vm.startPrank(TREASURY);
@@ -300,7 +325,7 @@ contract TGETest is Test {
         uint256 hundredether = 100 ether;
         payable(revenueCollector).call{value: hundredether, gas: 3000000}("");
         uint256 collectedRevenueAfterJackpot = 99 ether;
-        revenueCollector.distrubuteRevenue();
+        revenueCollector.distributeRevenue();
         vm.stopPrank();
 
 
@@ -324,7 +349,7 @@ contract TGETest is Test {
         vm.startPrank(addr1);
         payable(revenueCollector).call{value: hundredether, gas: 3000000}("");
         collectedRevenueAfterJackpot += 99 ether;
-        revenueCollector.distrubuteRevenue();
+        revenueCollector.distributeRevenue();
         vm.stopPrank();
 
         vm.warp(block.timestamp + 150 days);
@@ -345,18 +370,187 @@ contract TGETest is Test {
 
     }
 
-    function testForPublicStaking() public {
-        vm.startPrank(PUBLIC);
-        spr.transfer(addr1, 100 ether);
-        spr.transfer(addr2, 200 ether);
-        spr.transfer(addr3, 300 ether);
+    function testForAdvisorStaking() public {
+        vm.startPrank(ADVISOR);
+
+        //create two advisor accounts and _cliffDurations of 3 monthes and _vestingDurations of 6 monthes amounts of 30_000_000 ether
+        address advisor1 = address(0x123456321);
+        address advisor2 = address(0x654321123);
+        uint256 _cliffDuration = THREE_MONTHS;
+        uint256 _vestingDuration = SIX_MONTHS;
+        uint256 amount = 10_000_000 ether;
+
+        console.log("before approving");
+
+        spr.approve(address(treasuryVesting), amount * 2);
+        treasuryVesting.addAdvisor(advisor1, amount, _cliffDuration, _vestingDuration);  
+        treasuryVesting.addAdvisor(advisor2, amount, _cliffDuration, _vestingDuration);
+        uint256 totalExpectedStakedTillNow = amount * 2;
+
+        console.log("after approving");
+
+        assertEq(spr.balanceOf(address(treasuryVesting)), amount * 2);
+        assertEq(treasuryVesting.totalSupply(), amount * 2);
+        assertEq(treasuryVesting.balance(advisor1), amount);
+        assertEq(treasuryVesting.balance(advisor2), amount);
+
         vm.stopPrank();
 
+        console.log("before treasury staking");
+
+        //TREASURY STAKES
+        vm.startPrank(TREASURY);
+        spr.approve(address(treasuryVesting), TREASURY_AMOUNT);
+        treasuryVesting.stake(TREASURY_AMOUNT);
+        totalExpectedStakedTillNow += TREASURY_AMOUNT;
+        assertEq(spr.balanceOf(address(treasuryVesting)), totalExpectedStakedTillNow);
+        assertEq(treasuryVesting.totalSupply(), totalExpectedStakedTillNow);
+        assertEq(treasuryVesting.balance(address(TREASURY)), TREASURY_AMOUNT);
+        vm.stopPrank();
+
+        //TEAM STAKES
+        vm.startPrank(TEAM);
+        spr.approve(address(treasuryVesting), TEAM_AMOUNT);
+        treasuryVesting.stake(TEAM_AMOUNT);
+        totalExpectedStakedTillNow += TEAM_AMOUNT;
+        assertEq(spr.balanceOf(address(treasuryVesting)), totalExpectedStakedTillNow);
+        assertEq(treasuryVesting.totalSupply(), totalExpectedStakedTillNow);
+        assertEq(treasuryVesting.balance(address(TEAM)), TEAM_AMOUNT);
+        vm.stopPrank();
+
+        //send revenue to revenue collector
+        console.log("before sending first 100 ether");
+
         vm.startPrank(addr1);
-        spr.approve(address(publicVesting), 100 ether);
-        uint256 tokenId1 = publicVesting.stake(100 ether, ONE_MONTH);
-        assertEq(spr.balanceOf(address(publicVesting)), 100 ether);
-        assertEq(publicVesting.ownerOf(tokenId1), addr1);
+        payable(revenueCollector).call{value: 100 ether, gas: 3000000}("");
+        assertGt(revenueCollector.totalEtherCollected(), 99 ether);
+        uint256 revToBeDistributed = revenueCollector.totalEtherCollected();
+        uint256 publicStakingShare = spr.balanceOf(address(publicStaking));
+        uint256 treasuryVestingShare = spr.balanceOf(address(treasuryVesting));
+        uint256 totalShare = publicStakingShare + treasuryVestingShare;
+
+        revenueCollector.distributeRevenue();
+        vm.stopPrank();
+
+        console.log("after sending first 100 ether");
+        assertEq(address(treasuryVesting).balance, revToBeDistributed * treasuryVestingShare / totalShare);
+        console.log("before warp", block.timestamp);
+        vm.warp(block.timestamp + 730 days);
+
+        //advisors unstake
+        vm.startPrank(advisor1);
+        uint256 advisor1BalanceBeforeUnstake = address(advisor1).balance;
+        treasuryVesting.unstake();
+        assertEq(spr.balanceOf(advisor1), amount);
+       
+        uint256 advisor1BalanceAfterUnstake = address(advisor1).balance;
+        uint256 expectedRewards = revToBeDistributed * amount / totalExpectedStakedTillNow;
+        assertEq(spr.balanceOf(advisor1), amount);
+        console.log("advisor1 rewards", treasuryVesting.calculateRewardsEarned(advisor1));
+        assertApproxEqAbs(advisor1BalanceAfterUnstake, advisor1BalanceBeforeUnstake + expectedRewards, 0.0001 ether);
+        totalExpectedStakedTillNow -= amount;
+        vm.stopPrank();
+
+        uint256 advisor2Rewards1 = treasuryVesting.calculateRewardsEarned(advisor2);
+        console.log("advisor2 rewards for first 100 ether", advisor2Rewards1);
+
+        //send 100 more ether to revenue collector
+        vm.startPrank(addr1);
+        payable(revenueCollector).call{value: 100 ether, gas: 3000000}("");
+        revToBeDistributed = revenueCollector.totalEtherCollected();
+        console.log("revenue to be distributed", revToBeDistributed);
+        revenueCollector.distributeRevenue();
+        vm.stopPrank();
+
+        uint256 advisor2Rewards2 = treasuryVesting.calculateRewardsEarned(advisor2);
+        console.log("advisor2 rewards for second 100 ether", advisor2Rewards2);
+
+        //advisor2 unstake
+        vm.startPrank(advisor2);
+        uint256 advisor2BalanceBeforeUnstake = address(advisor2).balance;
+        treasuryVesting.unstake();
+        uint256 advisor2BalanceAfterUnstake = address(advisor2).balance;
+        expectedRewards = revToBeDistributed * amount / totalExpectedStakedTillNow;
+        uint256 advisor2ClaimedReward = advisor2BalanceAfterUnstake - advisor2BalanceBeforeUnstake;
+        assertEq(spr.balanceOf(advisor2), amount);
+        assertApproxEqAbs(advisor2ClaimedReward, advisor2Rewards1 + expectedRewards, 0.0001 ether);
+        vm.stopPrank();
+
+        //treasury claims
+        vm.startPrank(TREASURY);
+        uint256 treasuryBalanceBeforeClaim = address(TREASURY).balance;
+        treasuryVesting.claim();
+        uint256 treasuryBalanceAfterClaim = address(TREASURY).balance;
+        uint256 expectedRewardsFor100Ether = 99 ether * TREASURY_AMOUNT / 370_000_000 ether;
+        uint256 expectedRewardsFor200Ether = 99 ether * TREASURY_AMOUNT / 360_000_000 ether;
+        console.log("expected rewards for 100 ether", expectedRewardsFor100Ether);
+        assertApproxEqAbs(treasuryBalanceAfterClaim - treasuryBalanceBeforeClaim, expectedRewardsFor100Ether + expectedRewardsFor200Ether, createTokenRevenueAfterJackpot);
+        vm.stopPrank();
+
+        //team unstakes
+        vm.startPrank(TEAM);
+        uint256 teamBalanceBeforeUnstake = address(TEAM).balance;
+        treasuryVesting.unstake();
+        uint256 teamBalanceAfterUnstake = address(TEAM).balance;
+        expectedRewardsFor100Ether = revToBeDistributed * TEAM_AMOUNT / 370_000_000 ether;
+        expectedRewardsFor200Ether = revToBeDistributed * TEAM_AMOUNT / 360_000_000 ether;
+        assertApproxEqAbs(teamBalanceAfterUnstake - teamBalanceBeforeUnstake, expectedRewardsFor100Ether + expectedRewardsFor200Ether, createTokenRevenueAfterJackpot);
+        assertEq(spr.balanceOf(address(TEAM)), TEAM_AMOUNT / 2);
+        vm.stopPrank();
+
+
+        //send 100 more ether to revenue collector
+        vm.startPrank(addr1);
+        payable(revenueCollector).call{value: 100 ether, gas: 3000000}("");
+        revToBeDistributed = revenueCollector.totalEtherCollected();
+        console.log("revenue to be distributed", revToBeDistributed);
+        revenueCollector.distributeRevenue();
+        vm.stopPrank();
+
+        //treasury claims
+        vm.startPrank(TREASURY);
+        treasuryBalanceBeforeClaim = address(TREASURY).balance;
+        treasuryVesting.claim();
+        treasuryBalanceAfterClaim = address(TREASURY).balance;
+        expectedRewardsFor100Ether = 99 ether * TREASURY_AMOUNT / 275_000_000 ether;
+        assertApproxEqAbs(treasuryBalanceAfterClaim - treasuryBalanceBeforeClaim, expectedRewardsFor100Ether, createTokenRevenueAfterJackpot);
+        vm.stopPrank();
+
+        //trasury unstakes
+        vm.startPrank(TREASURY);
+        uint256 treasuryBalanceBeforeUnstake = address(TREASURY).balance;
+        treasuryVesting.unstake();
+        uint256 treasuryBalanceAfterUnstake = address(TREASURY).balance;
+        expectedRewardsFor100Ether = 0;
+        assertApproxEqAbs(treasuryBalanceAfterUnstake - treasuryBalanceBeforeUnstake, expectedRewardsFor100Ether, createTokenRevenueAfterJackpot);
+        assertEq(spr.balanceOf(address(TREASURY)), TREASURY_AMOUNT / 2);
+        vm.stopPrank();
+
+        vm.warp(block.timestamp + 730 days);
+        console.log("before team unstake");
+        //team unstakes all
+        vm.startPrank(TEAM);
+        teamBalanceBeforeUnstake = address(TEAM).balance;
+        treasuryVesting.unstake();
+        teamBalanceAfterUnstake = address(TEAM).balance;
+        expectedRewardsFor100Ether = 0;
+        assertApproxEqAbs(teamBalanceAfterUnstake - teamBalanceBeforeUnstake, expectedRewardsFor100Ether, createTokenRevenueAfterJackpot);
+        assertEq(spr.balanceOf(address(TEAM)), TEAM_AMOUNT);
+        vm.stopPrank();
+        console.log("before treasury unstake");
+        //treasury unstakes all
+        vm.startPrank(TREASURY);
+        treasuryBalanceBeforeUnstake = address(TREASURY).balance;
+        treasuryVesting.unstake();
+        treasuryBalanceAfterUnstake = address(TREASURY).balance;
+        expectedRewardsFor100Ether = 0;
+        assertApproxEqAbs(treasuryBalanceAfterUnstake - treasuryBalanceBeforeUnstake, expectedRewardsFor100Ether, createTokenRevenueAfterJackpot);
+        assertEq(spr.balanceOf(address(TREASURY)), TREASURY_AMOUNT);
+        vm.stopPrank();
 
     }
+
+
+
+
 }

@@ -8,7 +8,7 @@ import "../src/SuperMemeDegenBondingCurve.sol";
 import "../src/Factories/SuperMemeRegistry.sol";
 import "../src/SuperMemeRevenueCollector.sol";
 import "../src/Factories/CommunityLockFactory.sol";
-import "../src/SuperMemeToken/SuperMemePublicVesting.sol";
+import "../src/SuperMemeToken/SuperMemePublicStaking.sol";
 import "../src/SuperMemeToken/SuperMemeTreasuryVesting.sol";
 import "../src/SuperMemeToken/SuperMeme.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
@@ -16,6 +16,8 @@ import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 contract TestFactories is Test {
     uint256 public dummyBuyAmount = 1000;
     uint256 public dummyBuyAmount2 = 1000000;
+
+    uint256 public tgeDate = 1732482000;
 
     IUniswapFactory public uniswapFactory;
     RefundableFactory public refundableFactory;
@@ -26,7 +28,7 @@ contract TestFactories is Test {
     SuperMemeRevenueCollector public revenueCollector;
     CommunityLockFactory public communityLockFactory;
 
-    SuperMemePublicVesting public publicVesting;
+    SuperMemePublicStaking public publicStaking;
     SuperMemeTreasuryVesting public treasuryVesting;
     SuperMeme public spr;
 
@@ -46,11 +48,11 @@ contract TestFactories is Test {
         uint256 createTokenRevenue = 0.00001 ether;
 
         spr = new SuperMeme();
-        publicVesting = new SuperMemePublicVesting(address(spr));
-        treasuryVesting = new SuperMemeTreasuryVesting(address(spr));
+        publicStaking = new SuperMemePublicStaking(address(spr));
+        treasuryVesting = new SuperMemeTreasuryVesting(address(spr), tgeDate);
 
 
-        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicVesting), address(treasuryVesting));
+        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicStaking), address(treasuryVesting));
 
 
 
