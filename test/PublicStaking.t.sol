@@ -239,17 +239,24 @@ contract PublicStaking is Test {
         spr.transfer(addr4, 1_600_000 ether);
         vm.stopPrank();
 
+        console.log("spr balance of addr1", spr.balanceOf(addr1));
+
         vm.startPrank(addr1);
         spr.approve(address(publicStaking), 100_000 ether);
         uint256 tokenId1 = publicStaking.stake(100_000 ether, SIX_MONTHS);
+        console.log("after stake", spr.balanceOf(addr1));
         assertEq(spr.balanceOf(address(publicStaking)), 100_000 ether);
         assertEq(publicStaking.ownerOf(tokenId1), addr1);
         vm.stopPrank();
+
+        console.log("token id1", tokenId1);
 
         vm.startPrank(addr2);
         spr.approve(address(publicStaking), 200_000 ether);
         uint256 tokenId2 = publicStaking.stake(200_000 ether, THREE_MONTHS);
  
+        console.log("token id2", tokenId2);
+
         assertEq(publicStaking.ownerOf(tokenId2), addr2);
         vm.stopPrank();
 

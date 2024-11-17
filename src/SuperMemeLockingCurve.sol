@@ -180,7 +180,7 @@ contract SuperMemeLockingCurve is ERC20, ReentrancyGuard {
             }
             if (!alreadyVoted) {
                 require(
-                    balanceOf(msg.sender) >= 2000000 * 10 ** 18,
+                    balanceOf(msg.sender) >= 1000000 * 10 ** 18,
                     "Low tokens"
                 );
                 sendToDexVoters.push(msg.sender);

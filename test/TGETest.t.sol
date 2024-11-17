@@ -334,6 +334,7 @@ contract TGETest is Test {
         vm.expectRevert("Cliff period not reached");
         treasuryVesting.unstake();
         console.log("vesting reward balance", address(treasuryVesting).balance);
+        console.log("block timestamp", block.timestamp);
         vm.warp(block.timestamp + 730 days);
         ethBalanceofTreasuryBeforeClaim = address(TREASURY).balance;
         treasuryVesting.unstake();
@@ -436,6 +437,7 @@ contract TGETest is Test {
         assertEq(address(treasuryVesting).balance, revToBeDistributed * treasuryVestingShare / totalShare);
         console.log("before warp", block.timestamp);
         vm.warp(block.timestamp + 730 days);
+        console.log("after warp", block.timestamp);
 
         //advisors unstake
         vm.startPrank(advisor1);
@@ -527,13 +529,14 @@ contract TGETest is Test {
         vm.stopPrank();
 
         vm.warp(block.timestamp + 730 days);
+        console.log("block timestamp after second warp", block.timestamp);
         console.log("before team unstake");
         //team unstakes all
         vm.startPrank(TEAM);
         teamBalanceBeforeUnstake = address(TEAM).balance;
         treasuryVesting.unstake();
         teamBalanceAfterUnstake = address(TEAM).balance;
-        expectedRewardsFor100Ether = 0;
+        expectedRewardsFor100Ether = 99 ether * TEAM_AMOUNT / 2 / 275_000_000 ether;
         assertApproxEqAbs(teamBalanceAfterUnstake - teamBalanceBeforeUnstake, expectedRewardsFor100Ether, createTokenRevenueAfterJackpot);
         assertEq(spr.balanceOf(address(TEAM)), TEAM_AMOUNT);
         vm.stopPrank();
@@ -549,8 +552,5 @@ contract TGETest is Test {
         vm.stopPrank();
 
     }
-
-
-
 
 }
