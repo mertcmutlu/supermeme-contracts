@@ -29,6 +29,7 @@ contract SuperMemeRevenueCollector is Ownable {
     uint256 public totalEtherCollected;
     uint256 public nftShare;
     uint256 public lockDuration = 1 weeks;
+    uint256 public allTimeRevenue;
 
     mapping(uint256 => uint256) public nftLocks;
 
@@ -41,6 +42,7 @@ contract SuperMemeRevenueCollector is Ownable {
     receive() external payable {
         totalEtherCollected += (msg.value - msg.value / 100);
         nftShare += msg.value / 100; 
+        allTimeRevenue += msg.value;
     }
     function distributeRevenue() public payable {
         uint256 balanceOfTreasury = SPR.balanceOf(address(treasuryVesting));
