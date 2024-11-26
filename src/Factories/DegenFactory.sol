@@ -46,15 +46,10 @@ contract DegenFactory is Ownable  {
         uint256 _devLockDuration,
         uint256 _buyEth
     ) public payable returns (address token) {
-
         require(msg.value >= createTokenRevenue, "Insufficient funds");
         require(
-            _devLockDuration == 0 ||
-                _devLockDuration == 1 weeks ||
-                _devLockDuration == 2 weeks ||
-                _devLockDuration == 3 weeks ||
-                _devLockDuration == 4 weeks,
-            "Invalid dev lock duration"
+            (_devLockDuration >= 1 days && _devLockDuration <= 7 days && _devLockDuration % 1 days == 0) || _devLockDuration == 12 hours,
+            "Invalid lock duration"
         );
         require(_devAddress == msg.sender, "Invalid dev address");
 
