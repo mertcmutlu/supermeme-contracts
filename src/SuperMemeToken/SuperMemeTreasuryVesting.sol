@@ -49,7 +49,7 @@ contract SuperMemeTreasuryVesting is Ownable {
     uint256[2] public airdropLocks = [30 days, 30 days];
 
     // Predefined roles and their vesting details
-    address public constant TEAM = 0xEcd2369e23Fb21458aa41f7fb1cB1013913D97EA;
+    address public constant TEAM = 0xFFFf2A9e9A7E8B738e3a18538CFFbc101A397419;
     address public constant TREASURY = 0xc674f8D0bBC54f8eB7e7c32d6b6E11dC07f01Af5;
     address public constant DEVELOPMENT = 0x86F13a708347611346B37457D3A5666e33630dA6;
     address public constant MARKETING = 0x8614a5372E87511a93568d756469CCc06c5a3393;
