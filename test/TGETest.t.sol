@@ -198,6 +198,7 @@ contract TGETest is Test {
         }("SuperMeme3", "MEM", 0, address(addr1), 0, 1 days);
         lockingCurve = SuperMemeLockingCurve(LockingToken);
 
+
         createTokenRevenueAfterJackpot = (createTokenRevenue * 3) * 99 / 100;
         console.log("timestamp before warp", block.timestamp);
         vm.warp(tgeDate);

@@ -45,7 +45,7 @@ contract TestFactories is Test {
         vm.deal(owner, 1000 ether);
         vm.deal(addr1, 1000 ether);
 
-        uint256 createTokenRevenue = 0.00001 ether;
+        uint256 createTokenRevenue = 0.0008 ether;
 
         spr = new SuperMeme();
         publicStaking = new SuperMemePublicStaking(address(spr));
@@ -53,9 +53,6 @@ contract TestFactories is Test {
 
 
         revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicStaking), address(treasuryVesting));
-
-
-
 
         registry = new SuperMemeRegistry();
         degenFactory = new DegenFactory(address(registry));
@@ -72,7 +69,6 @@ contract TestFactories is Test {
         refundableFactory.setCreateTokenRevenue(createTokenRevenue);
         lockingCurveFactory.setCreateTokenRevenue(createTokenRevenue);
         communityLockFactory.setCreateTokenRevenue(createTokenRevenue);
-
 
 
         registry.setFactory(address(degenFactory));
@@ -157,7 +153,6 @@ contract TestFactories is Test {
         buyAmounts[6] = 45000000;
         buyAmounts[7] = 110000000;
         for (uint256 i = 0; i < buyAmounts.length; i++) {
-            
             uint256 buyAmount = buyAmounts[i];
             uint256 cost = degenbondingcurve.calculateCost(buyAmount);
             uint256 tax = cost / 100;
@@ -202,8 +197,7 @@ contract TestFactories is Test {
             );
         assertEq(newTokenInstance.balanceOf(addr1), buyAmount * 10 ** 18);
     }
-        function testRefundableYesDevBuy() public {
-        //with the loop please
+    function testRefundableYesDevBuy() public {
         vm.startPrank(addr1);
         uint256[] memory buyAmounts = new uint256[](8);
         buyAmounts[0] = 500;

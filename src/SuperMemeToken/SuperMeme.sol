@@ -73,9 +73,9 @@ contract SuperMeme is ERC20 {
 
         _mint(msg.sender, 10_000_000 ether);
 
-        // require(
-        //     totalSupply() == 1_000_000_000 * 10 ** decimals(),
-        //     "SuperMeme: Invalid total supply"
-        // );
+        require(
+            totalSupply() == 1_010_000_000 * 10 ** decimals(),
+            "SuperMeme: Invalid total supply"
+        );
     }
 }

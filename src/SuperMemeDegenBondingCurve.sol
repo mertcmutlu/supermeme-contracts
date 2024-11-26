@@ -100,9 +100,6 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
             devLocked = _devLocked;
         }
     }
-
-
-
     function buyTokens(
         uint256 _amount
     ) public payable nonReentrant {
@@ -263,4 +260,4 @@ contract SuperMemeDegenBondingCurve is ERC20, ReentrancyGuard {
             sendToDex();
         }   
     }
-}
+}   

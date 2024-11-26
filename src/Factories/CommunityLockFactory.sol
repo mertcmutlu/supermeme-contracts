@@ -45,7 +45,7 @@ contract CommunityLockFactory is Ownable {
 
         (bool success, ) = revenueCollector.call{
             value: createTokenRevenue,
-            gas: 50000
+            gas: 500000
         }("");
         require(success, "Transfer failed");
             token = address(

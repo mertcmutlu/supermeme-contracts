@@ -46,7 +46,7 @@ contract RefundableFactory is Ownable{
         require(msg.value >= createTokenRevenue, "Insufficient funds");
         require(_devAddress == msg.sender, "Invalid dev address");
 
-        (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 50000}("");
+        (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 500000}("");
         require(success, "Transfer failed");
 
         if (

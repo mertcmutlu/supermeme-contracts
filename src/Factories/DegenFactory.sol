@@ -17,7 +17,7 @@ import "../Interfaces/ISuperMemeRegistry.sol";
                                                     ███    ███                                                           
 */
 
-contract DegenFactory  is Ownable  {
+contract DegenFactory is Ownable  {
 
     event TokenCreated(
         address indexed tokenAddress,
@@ -58,7 +58,7 @@ contract DegenFactory  is Ownable  {
         );
         require(_devAddress == msg.sender, "Invalid dev address");
 
-        (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 50000}("");
+        (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 500000}("");
         require(success, "Transfer failed");
 
         if (

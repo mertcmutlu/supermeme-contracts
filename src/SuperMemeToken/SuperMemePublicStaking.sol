@@ -80,7 +80,7 @@ contract SuperMemePublicStaking is ERC721, ERC721Enumerable, ReentrancyGuard {
      * @return tokenId The ID of the minted NFT.
      */
     function stake(uint256 amount, uint256 lockPeriod) external nonReentrant returns (uint256) {
-        require(amount > 0, "Stake amount must be greater than zero");
+        require(amount > 500 ether, "Stake amount must be greater than zero");
         require(
             lockPeriod == FIFTEEN_DAYS ||
             lockPeriod == ONE_MONTH ||
