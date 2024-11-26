@@ -18,8 +18,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
  ▄████████▀  ████████▀   ▄████▀        ██████████   ███    ███  ▀█   ███   █▀    ██████████  ▀█   ███   █▀    ██████████ 
                                                     ███    ███                                                           
 */
-
-
 /**
  * @title SuperMemePublicStaking
  * @dev This contract allows users to stake ERC20 tokens to earn rewards, represented as ERC721 NFTs. 
