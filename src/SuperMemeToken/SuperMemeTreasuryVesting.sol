@@ -4,6 +4,8 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "forge-std/console.sol";
+//add reentrancy guard
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /*
    ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
@@ -109,6 +111,7 @@ contract SuperMemeTreasuryVesting is Ownable {
     ) external {
         require(msg.sender == ADVISOR, "Only advisory can add another advisor");
         require(advisorVestingSchedule[advisor].vestingEnd == 0, "Advisor already added");
+        require(_vestingDuration > 0, "Invalid vesting duration");
 
         // Initialize advisor vesting schedule
         advisors.push(advisor);
@@ -124,7 +127,8 @@ contract SuperMemeTreasuryVesting is Ownable {
         totalUnlockedAndClaimed[advisor] = 0;
 
         // Transfer tokens from the sender to the contract
-        stakingToken.transferFrom(msg.sender, address(this), amount);
+        bool success = stakingToken.transferFrom(msg.sender, address(this), amount);
+        require(success, "Transfer failed");
     }
 
     /**
@@ -148,7 +152,8 @@ contract SuperMemeTreasuryVesting is Ownable {
         Vesting memory vesting = getVestingSchedule(msg.sender);
         require(vesting.totalAmount == amount, "Amount does not match vesting amount");
 
-        stakingToken.transferFrom(msg.sender, address(this), amount);
+        bool success = stakingToken.transferFrom(msg.sender, address(this), amount);
+        require(success, "Transfer failed");
         _updateRewards(msg.sender);
 
         balance[msg.sender] += amount;
@@ -159,7 +164,7 @@ contract SuperMemeTreasuryVesting is Ownable {
     /**
      * @dev Unstake tokens after the cliff period and vesting unlock.
      */
-    function unstake() external {
+    function unstake() external nonReentrant {
         require(balance[msg.sender] > 0, "Not staked yet :)");
         uint256 amount = getUnlockedAmount(msg.sender);
         console.log("unlocked amount inside contract ", amount);

@@ -1,4 +1,4 @@
-pragma solidity ^0.8.0;
+pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./SuperMemeToken/SuperMemePublicStaking.sol";
 import "./SuperMemeToken/SuperMemeTreasuryVesting.sol";
 import "forge-std/console.sol";
+//ReentrancyGuard
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /*
    ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
@@ -40,11 +42,12 @@ contract SuperMemeRevenueCollector is Ownable {
     }
 
     receive() external payable {
+        require(msg.value > 100, "Value should be more than 0");
         totalEtherCollected += (msg.value - msg.value / 100);
         nftShare += msg.value / 100; 
         allTimeRevenue += msg.value;
     }
-    function distributeRevenue() public payable {
+    function distributeRevenue() public {
         require(totalEtherCollected > 0.1 ether, "Rev should be more than 0.1 ether to be distributed");
         uint256 balanceOfTreasury = SPR.balanceOf(address(treasuryVesting));
         uint256 balanceOfPublicStaking = SPR.balanceOf(address(publicStaking));
@@ -60,7 +63,7 @@ contract SuperMemeRevenueCollector is Ownable {
         totalEtherCollected = 0;
     }
 
-    function collectNFTJackpot(uint256 _tokenId) public {
+    function collectNFTJackpot(uint256 _tokenId) public nonReentrant {
         require(
             SuperDuperNFT.ownerOf(_tokenId) == msg.sender,
             "NFT not owned by sender"

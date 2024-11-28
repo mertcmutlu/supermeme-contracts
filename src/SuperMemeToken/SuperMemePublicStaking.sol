@@ -99,7 +99,9 @@ contract SuperMemePublicStaking is ERC721, ERC721Enumerable, ReentrancyGuard {
         }
 
         // Transfer staking tokens from the user to the contract
-        stakingToken.transferFrom(msg.sender, address(this), amount);
+        bool success = stakingToken.transferFrom(msg.sender, address(this), amount);
+        require(success, "Transfer failed");
+        
 
         uint256 receivedShares = amount * revenueShareBonus;
         totalSharesAmount += receivedShares;
