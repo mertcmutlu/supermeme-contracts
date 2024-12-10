@@ -6,8 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./SuperMemeToken/SuperMemePublicStaking.sol";
 import "./SuperMemeToken/SuperMemeTreasuryVesting.sol";
 import "forge-std/console.sol";
-//ReentrancyGuard
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /*
    ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
@@ -21,7 +20,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
                                                     ███    ███                                                           
 */
 
-contract SuperMemeRevenueCollector is Ownable {
+contract SuperMemeRevenueCollector is Ownable, ReentrancyGuard {
     ERC20 public SPR;
     ERC721 public SuperDuperNFT;
 
@@ -48,7 +47,7 @@ contract SuperMemeRevenueCollector is Ownable {
         allTimeRevenue += msg.value;
     }
     function distributeRevenue() public {
-        require(totalEtherCollected > 0.1 ether, "Rev should be more than 0.1 ether to be distributed");
+        //require(totalEtherCollected > 0.1 ether, "Rev should be more than 0.1 ether to be distributed");
         uint256 balanceOfTreasury = SPR.balanceOf(address(treasuryVesting));
         uint256 balanceOfPublicStaking = SPR.balanceOf(address(publicStaking));
         uint256 totalBalance = balanceOfTreasury + balanceOfPublicStaking;

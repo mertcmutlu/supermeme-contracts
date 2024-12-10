@@ -44,7 +44,7 @@ contract LockingCurveFactory is Ownable {
         uint256 _tMax
     ) public payable returns (address token) {
         require(
-            (_devLockDuration >= 1 days && _devLockDuration <= 7 days && _devLockDuration % 1 days == 0) || _devLockDuration == 12 hours,
+            (_tMax >= 1 days && _tMax <= 7 days && _tMax % 1 days == 0) || _tMax == 12 hours,
             "Invalid lock duration"
         );
         require(msg.value >= createTokenRevenue, "Insufficient funds");

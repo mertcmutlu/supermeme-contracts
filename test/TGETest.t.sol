@@ -17,7 +17,7 @@ contract TGETest is Test {
     uint256 public dummyBuyAmount = 1000;
     uint256 public dummyBuyAmount2 = 1000000;
 
-    uint256 public tgeDate = 1732482000;
+    uint256 public tgeDate = 1734451200;
 
     IUniswapFactory public uniswapFactory;
     RefundableFactory public refundableFactory;
@@ -37,55 +37,41 @@ contract TGETest is Test {
     SuperMemeLockingCurve public lockingCurve;
 
 
-    // address public constant TEAM = 0xEcd2369e23Fb21458aa41f7fb1cB1013913D97EA;
-    // address public constant TREASURY = 0xc674f8D0bBC54f8eB7e7c32d6b6E11dC07f01Af5;
-    // address public constant DEVELOPMENT = 0x86F13a708347611346B37457D3A5666e33630dA6;
-    // address public constant MARKETING = 0x8614a5372E87511a93568d756469CCc06c5a3393;
-    // address public constant LIQUIDITY = 0x4049C6d09D7c1C93D70181650279100E4D018D3D;
-    // address public constant AIRDROP = 0x137d220Fb68F637e98773E39aB74E466C773AC20;
-    // address public constant ADVISOR = 0xb1683022cDE0d8d69b4c458F52610f6Fd4e83D66;
-
-
     uint256 public createTokenRevenue = 0.0008 ether;
 
-    address public constant SEED = 0xB7918aF63C7Db61F1c1152C3bc4EfBd9F36dEab6;
-    uint256 public constant SEED_AMOUNT = 30_000_000 ether;
+   address public constant SEED = 0x6F69C5363dd8c21256d40d47caBFf5242AD14e3E;
+    uint256 public constant SEED_AMOUNT = 113_333_333 ether;
 
-    address public constant OPENS = 0x65C5d8417AF968CB711A5eD3220E665e617EF4A6;
-    uint256 public constant OPENS_AMOUNT = 133_000_000 ether;
+    address public constant PUBLIC = 0x69e63Ed9105463183625981C926e8282b6Eb0db4;
+    uint256 public constant PUBLIC_AMOUNT = 126_666_667 ether;
 
-    address public constant KOL = 0xa4fbf15678aD52ea675C4FA4EA0f8617781D6Ef4;
-    uint256 public constant KOL_AMOUNT = 27_000_000 ether;
-
-    address public constant PUBLIC = 0x53Ad0aF41dD7008e19B666A3fbe175B6215669F3;
-    uint256 public constant PUBLIC_AMOUNT = 50_000_000 ether;
-
-    address public constant TEAM = 0xEcd2369e23Fb21458aa41f7fb1cB1013913D97EA;
+    address public constant TEAM = 0xFFFf2A9e9A7E8B738e3a18538CFFbc101A397419;
     uint256 public constant TEAM_AMOUNT = 150_000_000 ether;
 
     address public constant TREASURY =
-        0xc674f8D0bBC54f8eB7e7c32d6b6E11dC07f01Af5;
+        0xA902fFcC625D8DcAcaf08d00F96B32c5d6A6ebe7;
     uint256 public constant TREASURY_AMOUNT = 200_000_000 ether;
 
     address public constant DEVELOPMENT =
-        0x234567890abCdeF1234567890AbCDef123456788;
+        0xdCb265A5Ce660611Bc1DA882d8A42733d88C1323;
     uint256 public constant DEVELOPMENT_AMOUNT = 80_000_000 ether;
 
     address public constant MARKETING =
-        0x34567890abCDEf1234567890aBCDEf1234567892;
+        0xbd7784D02c6590e68fEd3098E354e7cbD232adC4;
     uint256 public constant MARKETING_AMOUNT = 90_000_000 ether;
 
     address public constant LIQUIDITY =
-        0x4049C6d09D7c1C93D70181650279100E4D018D3D;
+        0x6F72B3530271bE8ae09CeE65d05836E9720Df880;
     uint256 public constant LIQUIDITY_AMOUNT = 180_000_000 ether;
 
     address public constant AIRDROP =
-        0x567890abCdeF1234567890abCdEF123456789012;
+        0x538c08af3e3cD67eeb4FB45970D3520F58537Ba4;
     uint256 public constant AIRDROP_AMOUNT = 30_000_000 ether;
 
     address public constant ADVISOR =
-        0xb1683022cDE0d8d69b4c458F52610f6Fd4e83D66;
+        0x84dC3E5eC35A358742bf6fb2461104856439EA6C;
     uint256 public constant ADVISOR_AMOUNT = 30_000_000 ether;
+
 
     address public owner = address(0x123);
     address public addr1 = address(0x456);
@@ -115,8 +101,7 @@ contract TGETest is Test {
         vm.deal(addr2, 1000 ether);
         vm.deal(addr3, 1000 ether);
         vm.deal(SEED, 1000 ether);
-        vm.deal(OPENS, 1000 ether);
-        vm.deal(KOL, 1000 ether);
+
         vm.deal(PUBLIC, 1000 ether);
         vm.deal(TEAM, 1000 ether);
         vm.deal(TREASURY, 1000 ether);
@@ -258,7 +243,7 @@ contract TGETest is Test {
         assertEq(treasuryVesting.totalSupply(), TREASURY_AMOUNT);
         assertEq(treasuryVesting.balance(address(TREASURY)), TREASURY_AMOUNT);
         vm.stopPrank();
-
+        console.log("after staking treasury");
         vm.startPrank(TEAM);
         spr.approve(address(treasuryVesting), TEAM_AMOUNT);
         treasuryVesting.stake(TEAM_AMOUNT);
@@ -266,10 +251,16 @@ contract TGETest is Test {
         assertEq(treasuryVesting.totalSupply(), TEAM_AMOUNT + TREASURY_AMOUNT);
         assertEq(treasuryVesting.balance(address(TEAM)), TEAM_AMOUNT);
         
+        console.log("after staking team");
+
+        
+
         revenueCollector.distributeRevenue();
         assertEq(revenueCollector.totalEtherCollected(), 0);
         assertEq(treasuryVesting.allTimeRevenueCollected(), createTokenRevenueAfterJackpot);
         vm.stopPrank();
+
+        console.log("after revenue distribution");
 
         vm.startPrank(TREASURY);
         vm.expectRevert("Cliff period not reached");
@@ -282,7 +273,7 @@ contract TGETest is Test {
         vm.stopPrank();
 
         vm.warp(block.timestamp + 730 days);
-
+        console.log("block timestamp warpppppppp", block.timestamp);
         vm.startPrank(TREASURY);
         console.log("before unstake sadfasfasd", spr.balanceOf(address(TREASURY)));
         treasuryVesting.unstake();
@@ -380,6 +371,8 @@ contract TGETest is Test {
         address advisor2 = address(0x654321123);
         uint256 _cliffDuration = THREE_MONTHS;
         uint256 _vestingDuration = SIX_MONTHS;
+        console.log("three months", THREE_MONTHS);
+        console.log("six months", SIX_MONTHS);
         uint256 amount = 10_000_000 ether;
 
         console.log("before approving");

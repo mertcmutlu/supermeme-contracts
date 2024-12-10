@@ -79,10 +79,8 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         factoryContract = msg.sender;
         revenueCollector = _revenueCollector;
         uniswapV2Router = IUniswapV2Router02(
-            0x6682375ebC1dF04676c0c5050934272368e6e883
+            0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
         );
-        //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
-        //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
         _mint(address(this), liquidityThreshold);
         scaledSupply = scaledLiquidityThreshold;
         devAddress = _devAdress;

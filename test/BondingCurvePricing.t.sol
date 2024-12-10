@@ -42,10 +42,10 @@ contract BondingCurvePricingTest is Test {
     address public addr3 = address(0x101112);
     function setUp() public {
         //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
-        //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
+        //base sepolia router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
 
         createTokenRevenue = 0.0008 ether;
-        router = IUniswapV2Router02(address(0x6682375ebC1dF04676c0c5050934272368e6e883));
+        router = IUniswapV2Router02(address(0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24));
         address fakeContract = address(0x12123123);
         unifactory = IUniswapFactory(address(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6));
         degenbondingcurve = new SuperMemeDegenBondingCurve(
@@ -81,7 +81,7 @@ contract BondingCurvePricingTest is Test {
 
         degenFactory.setRevenueCollector(address(revenueCollector));
         refundableFactory.setRevenueCollector(address(revenueCollector));
-        //Create a token
+
         address testToken = degenFactory.createToken{value: createTokenRevenue}(
             "SuperMeme",
             "MEME",

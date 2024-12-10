@@ -4,8 +4,7 @@ pragma solidity 0.8.20;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "forge-std/console.sol";
-//add reentrancy guard
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /*
    ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
@@ -25,10 +24,9 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
  * @dev A contract for vesting funds and managing rewards for different roles in the ecosystem. 
  *      It handles vesting schedules, reward distribution, and staking functionality.
  */
-contract SuperMemeTreasuryVesting is Ownable {
+contract SuperMemeTreasuryVesting is Ownable, ReentrancyGuard {
 
     IERC20 public immutable stakingToken; // The ERC20 token used for vesting and rewards
-
     // Balances and rewards
     mapping(address => uint256) public balance; // Current balance of tokens staked by an address
     mapping(address => uint256) public lastUnstakeTime; // Last unstake time of an address
@@ -47,17 +45,16 @@ contract SuperMemeTreasuryVesting is Ownable {
     uint256[2] public treasuryLocks = [365 days, 730 days];
     uint256[2] public developmentLocks = [30 days, 730 days];
     uint256[2] public marketingLocks = [30 days, 730 days];
-    uint256[2] public liquidityLocks = [0 days, 365 days];
     uint256[2] public airdropLocks = [30 days, 30 days];
 
     // Predefined roles and their vesting details
     address public constant TEAM = 0xFFFf2A9e9A7E8B738e3a18538CFFbc101A397419;
-    address public constant TREASURY = 0xc674f8D0bBC54f8eB7e7c32d6b6E11dC07f01Af5;
-    address public constant DEVELOPMENT = 0x86F13a708347611346B37457D3A5666e33630dA6;
-    address public constant MARKETING = 0x8614a5372E87511a93568d756469CCc06c5a3393;
-    address public constant LIQUIDITY = 0x4049C6d09D7c1C93D70181650279100E4D018D3D;
-    address public constant AIRDROP = 0x137d220Fb68F637e98773E39aB74E466C773AC20;
-    address public constant ADVISOR = 0xb1683022cDE0d8d69b4c458F52610f6Fd4e83D66;
+    address public constant TREASURY = 0xA902fFcC625D8DcAcaf08d00F96B32c5d6A6ebe7;
+    address public constant DEVELOPMENT = 0xdCb265A5Ce660611Bc1DA882d8A42733d88C1323;
+    address public constant MARKETING = 0xbd7784D02c6590e68fEd3098E354e7cbD232adC4;
+    address public constant LIQUIDITY = 0x6F72B3530271bE8ae09CeE65d05836E9720Df880;
+    address public constant AIRDROP = 0x538c08af3e3cD67eeb4FB45970D3520F58537Ba4;
+    address public constant ADVISOR = 0x84dC3E5eC35A358742bf6fb2461104856439EA6C;
 
     // Vesting amounts for roles
     uint256 public constant TREASURY_AMOUNT = 200_000_000 ether;
@@ -66,6 +63,7 @@ contract SuperMemeTreasuryVesting is Ownable {
     uint256 public constant LIQUIDITY_AMOUNT = 72_000_000 ether;
     uint256 public constant AIRDROP_AMOUNT = 30_000_000 ether;
     uint256 public constant TEAM_AMOUNT = 150_000_000 ether;
+
 
     // Vesting schedules for advisors and roles
     mapping(address => Vesting) public advisorVestingSchedule; // Vesting schedules for advisors
@@ -161,16 +159,16 @@ contract SuperMemeTreasuryVesting is Ownable {
         totalUnlockedAndClaimed[msg.sender] = 0;
     }
 
+
+
     /**
      * @dev Unstake tokens after the cliff period and vesting unlock.
      */
     function unstake() external nonReentrant {
-        require(balance[msg.sender] > 0, "Not staked yet :)");
+        require(balance[msg.sender] > 0, "Not staked yet");
         uint256 amount = getUnlockedAmount(msg.sender);
-        console.log("unlocked amount inside contract ", amount);
         require(block.timestamp > getCliffEnd(msg.sender), "Cliff period not reached");
         require(amount > 0, "No unlocked amount");
-
         claim();
         stakingToken.transfer(msg.sender, amount);
 
@@ -190,7 +188,8 @@ contract SuperMemeTreasuryVesting is Ownable {
 
         if (reward > 0) {
             earned[msg.sender] = 0;
-            payable(msg.sender).transfer(reward);
+            (bool success, ) = payable(msg.sender).call{value: reward, gas: 1000000}("");
+            require(success, "Transfer failed");
             allTimeRewardsDistributed += reward;
         }
         return reward;
@@ -217,7 +216,6 @@ contract SuperMemeTreasuryVesting is Ownable {
         } else if (block.timestamp >= vesting.vestingEnd) {
             return balance[account];
         } else {
-            console.log("inside else, account: ", account);
             uint256 vestingDuration = vesting.vestingEnd - vesting.cliffEnd;
             uint256 timeVested = block.timestamp - vesting.cliffEnd;
             return ((vesting.totalAmount * timeVested) / vestingDuration) - totalUnlockedAndClaimed[account];
@@ -232,7 +230,6 @@ contract SuperMemeTreasuryVesting is Ownable {
         vestingSchedule[TREASURY] = Vesting(tgeDate + treasuryLocks[0], tgeDate + treasuryLocks[1] + treasuryLocks[0], TREASURY_AMOUNT);
         vestingSchedule[DEVELOPMENT] = Vesting(tgeDate + developmentLocks[0], tgeDate + developmentLocks[1] + developmentLocks[0], DEVELOPMENT_AMOUNT);
         vestingSchedule[MARKETING] = Vesting(tgeDate + marketingLocks[0], tgeDate + marketingLocks[1]+ marketingLocks[0], MARKETING_AMOUNT);
-        vestingSchedule[LIQUIDITY] = Vesting(tgeDate + liquidityLocks[0], tgeDate + liquidityLocks[1] + liquidityLocks[0], LIQUIDITY_AMOUNT);
         vestingSchedule[AIRDROP] = Vesting(tgeDate + airdropLocks[0], tgeDate + airdropLocks[1] +airdropLocks[0], AIRDROP_AMOUNT);
     }
 
@@ -249,7 +246,7 @@ contract SuperMemeTreasuryVesting is Ownable {
     }
 
     function isEligibleForVesting(address account) internal view returns (bool) {
-        return account == TEAM || account == TREASURY || account == DEVELOPMENT || account == MARKETING || account == LIQUIDITY || account == AIRDROP || advisorVestingSchedule[account].vestingEnd > 0;
+        return account == TEAM || account == TREASURY || account == DEVELOPMENT || account == MARKETING || account == AIRDROP || advisorVestingSchedule[account].vestingEnd > 0;
     }
 
     function getVestingSchedule(address account) internal view returns (Vesting memory) {
@@ -261,7 +258,6 @@ contract SuperMemeTreasuryVesting is Ownable {
     }
 
     function getCliffEnd(address account) internal view returns (uint256) {
-        console.log("getVestingSchedule(account).cliffEnd: ", getVestingSchedule(account).cliffEnd);
         return getVestingSchedule(account).cliffEnd;
     }
 }

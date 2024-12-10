@@ -48,7 +48,7 @@ contract DegenFactory is Ownable  {
     ) public payable returns (address token) {
         require(msg.value >= createTokenRevenue, "Insufficient funds");
         require(
-            (_devLockDuration >= 1 days && _devLockDuration <= 7 days && _devLockDuration % 1 days == 0) || _devLockDuration == 12 hours,
+            (_devLockDuration >= 1 days && _devLockDuration <= 7 days && _devLockDuration % 1 days == 0) || _devLockDuration == 12 hours || _devLockDuration == 0,
             "Invalid lock duration"
         );
         require(_devAddress == msg.sender, "Invalid dev address");
@@ -129,7 +129,6 @@ contract DegenFactory is Ownable  {
     function setCreateTokenRevenue(uint256 _createTokenRevenue) public onlyOwner {
         createTokenRevenue = _createTokenRevenue;
     }
-
     function setSuperMemeRegistry(address _superMemeRegistry) public onlyOwner {
         superMemeRegistry = ISuperMemeRegistry(_superMemeRegistry);
     }

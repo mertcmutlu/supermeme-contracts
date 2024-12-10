@@ -39,8 +39,8 @@ contract DegenBondingCurveTest is Test {
         vm.deal(addr3, 1000 ether);
 
             //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
-        //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
-        router = IUniswapV2Router02(0x6682375ebC1dF04676c0c5050934272368e6e883);
+        //base sepolia router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
+        router = IUniswapV2Router02(0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24);
 
         vm.startPrank(owner);
         registry = new SuperMemeRegistry();

@@ -3,7 +3,6 @@
 pragma solidity 0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "forge-std/console.sol";
 
 /*
    ▄████████ ███    █▄     ▄███████▄    ▄████████    ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████   ▄▄▄▄███▄▄▄▄      ▄████████ 
@@ -20,10 +19,10 @@ import "forge-std/console.sol";
 
 contract SuperMeme is ERC20 {
     address public constant SEED = 0x6F69C5363dd8c21256d40d47caBFf5242AD14e3E;
-    uint256 public constant SEED_AMOUNT = 30_000_000 ether;
+    uint256 public constant SEED_AMOUNT = 113_333_333 ether;
 
     address public constant PUBLIC = 0x69e63Ed9105463183625981C926e8282b6Eb0db4;
-    uint256 public constant PUBLIC_AMOUNT = 200_000_000 ether;
+    uint256 public constant PUBLIC_AMOUNT = 126_666_667 ether;
 
     address public constant TEAM = 0xFFFf2A9e9A7E8B738e3a18538CFFbc101A397419;
     uint256 public constant TEAM_AMOUNT = 150_000_000 ether;
@@ -62,7 +61,9 @@ contract SuperMeme is ERC20 {
         _mint(LIQUIDITY, LIQUIDITY_AMOUNT);
         _mint(AIRDROP, AIRDROP_AMOUNT);
         _mint(ADVISOR, ADVISOR_AMOUNT);
-
-        require(totalSupply() == 1_000_000_000 ether, "Invalid total supply");
+        require(
+            totalSupply() == 1_000_000_000 * 10 ** decimals(),
+            "SuperMeme: Invalid total supply"
+        );
     }
 }
