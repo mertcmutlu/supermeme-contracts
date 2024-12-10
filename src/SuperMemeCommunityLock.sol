@@ -79,10 +79,8 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         factoryContract = msg.sender;
         revenueCollector = _revenueCollector;
         uniswapV2Router = IUniswapV2Router02(
-            0x6682375ebC1dF04676c0c5050934272368e6e883
+            0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
         );
-        //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
-        //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
         _mint(address(this), liquidityThreshold);
         scaledSupply = scaledLiquidityThreshold;
         devAddress = _devAdress;
@@ -152,7 +150,6 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         );
         payTax(tax);
         uint256 excessEth = (_buyEth > totalCost) ? _buyEth - totalCost : 0;
-        //require(scaledSupply + _amount <= MAX_SALE_SUPPLY, "Max supply");
         totalEtherCollected += cost;
         address buyer = (msg.sender == factoryContract)
             ? devAddress
@@ -171,7 +168,6 @@ contract SuperMemeCommunityLock is ERC20, ReentrancyGuard {
         }
         uint256 totalSup = totalSupply();
         uint256 lastPrice = calculateCost(1);
-        uint256 remainingTokens = MAX_SALE_SUPPLY - scaledSupply;
 
         emit tokensBought(_amount, cost, address(this), buyer, totalSup);
         emit Price(lastPrice, totalSup, address(this), _amount);

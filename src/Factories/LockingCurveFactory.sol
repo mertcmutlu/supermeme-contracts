@@ -27,7 +27,7 @@ contract LockingCurveFactory is Ownable {
 
     ISuperMemeRegistry public superMemeRegistry;
 
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
     address public revenueCollector;
     address[] public tokenAddresses;
 
@@ -52,7 +52,7 @@ contract LockingCurveFactory is Ownable {
 
         (bool success, ) = revenueCollector.call{
             value: createTokenRevenue,
-            gas: 50000
+            gas: 500000
         }("");
         require(success, "Transfer failed");
 

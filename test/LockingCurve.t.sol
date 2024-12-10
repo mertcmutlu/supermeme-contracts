@@ -66,14 +66,14 @@ contract LockingCurve is Test {
     }
 
     function setUp() public {
-        addresses = generateMultipleAddresses(5);
+        addresses = generateMultipleAddresses(12);
 
         //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
-        //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
+        //base sepolia router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
 
         uint256 createTokenRevenue = 0.00001 ether;
         router = IUniswapV2Router02(
-            address(0x6682375ebC1dF04676c0c5050934272368e6e883)
+            address(0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24)
         );
         address fakeContract = address(0x12123123);
         unifactory = IUniswapFactory(
@@ -177,9 +177,7 @@ contract LockingCurve is Test {
         uint256 totalCostWithSlippage = totalCost + slippage;
         uint256 nextLockTime = lockingCurve.calculateNextLockTime();
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         uint256 lockTime = lockingCurve.lockTime(addr1);
         assertEq(lockTime, nextLockTime);
@@ -203,9 +201,7 @@ contract LockingCurve is Test {
             uint256 nextLockTime = lockingCurve.calculateNextLockTime();
             console.log("block timestamp", block.timestamp);
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             uint256 lockTime = lockingCurve.lockTime(addresses[i]);
             console.log("block timestamp", block.timestamp);
@@ -242,9 +238,7 @@ contract LockingCurve is Test {
             uint256 nextLockTime = lockingCurve.calculateNextLockTime();
             console.log("exits next");
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             console.log("user", i, "bought tokens");
             uint256 lockTime = lockingCurve.lockTime(addresses[i]);
@@ -265,6 +259,8 @@ contract LockingCurve is Test {
             uint256 remainingLockTime = (lockTime < block.timestamp)
                 ? 0
                 : lockTime - block.timestamp;
+
+            console.log("before underfow", remainingLockTime);
             console.log(
                 "remainingLockTime",
                 secondsToHumanReadable(remainingLockTime)
@@ -284,9 +280,7 @@ contract LockingCurve is Test {
         uint256 totalCostWithSlippage = totalCost + slippage;
         uint256 nextLockTime = lockingCurve.calculateNextLockTime();
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         for (uint256 i = 0; i < 5; i++) {
             uint256 newTimeStamp = 1 days * i;
@@ -319,9 +313,7 @@ contract LockingCurve is Test {
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             assertEq(lockingCurve.balanceOf(addresses[i]), amount * 10 ** 18);
             console.log("user", i, "bought tokens");
@@ -371,9 +363,7 @@ contract LockingCurve is Test {
                uint256 nextLockTime = lockingCurve.calculateNextLockTime();
         uint256 totalCostWithSlippage = totalCost + slippage;
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         assertEq(lockingCurve.balanceOf(addr1), amount * 10 ** 18);
 
@@ -407,15 +397,11 @@ contract LockingCurve is Test {
             vm.startPrank(addresses[i]);
             uint256 amount = 50000000;
             uint256 cost = lockingCurve.calculateCost(amount);
-            uint256 tax = cost / 100;
-            uint256 totalCost = cost + tax;
-            uint256 slippage = totalCost / 100;
-            uint256 totalCostWithSlippage = totalCost + slippage;
+            uint256 slippage = (cost + (cost / 100)) / 100;
+            uint256 totalCostWithSlippage = cost + (cost / 100) + slippage;
                    uint256 nextLockTime = lockingCurve.calculateNextLockTime();
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             assertEq(lockingCurve.balanceOf(addresses[i]), amount * 10 ** 18);
 
@@ -429,15 +415,11 @@ contract LockingCurve is Test {
             uint256 totalSupply = lockingCurve.MAX_SALE_SUPPLY();
             //log the curves progression please
 
-            uint256 curveProgression = (scaledSupply * 100) / totalSupply;
-
             uint256 remainingLockTime = (lockTime < block.timestamp)
                 ? 0
                 : lockTime - block.timestamp;
-            uint256 remaininLockTimeFromContract = lockingCurve
-                .checkRemainingLockTime(addresses[i]);
             console.log("before asser");
-            assertEq(remainingLockTime, remaininLockTimeFromContract);
+            assertEq(remainingLockTime, lockingCurve.checkRemainingLockTime(addresses[i]));
             //log the remaining lock time for all users
             for (uint256 j = 0; j < 5; j++) {
                 lockTime = lockingCurve.lockTime(addresses[j]);
@@ -478,9 +460,7 @@ contract LockingCurve is Test {
             uint256 totalCostWithSlippage = totalCost + slippage;
                    uint256 nextLockTime = lockingCurve.calculateNextLockTime();
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             assertEq(lockingCurve.balanceOf(addresses[i]), amount * 10 ** 18);
             uint256 lockTime = lockingCurve.lockTime(addresses[i]);
@@ -526,8 +506,8 @@ contract LockingCurve is Test {
         console.log("dex stage", lockingCurve.dexStage());
         lockingCurve.approve(address(router), 10000000 ether);
         amounts = router.swapExactTokensForETH(
-            10000000 ether,
-            10000 gwei,
+            10000000 gwei,
+            0,
             path,
             addresses[0],
             block.timestamp + 10 minutes + 10 days
@@ -545,6 +525,7 @@ contract LockingCurve is Test {
         uint256 slippage = totalCost / 100;
         uint256 totalCostWithSlippage = totalCost + slippage;
         for (uint256 i = 0; i < 5; i++) {
+            console.log("user number", i);
             amount = 150000000;
             cost = lockingCurve.calculateCost(amount);
             tax = cost / 100;
@@ -555,9 +536,7 @@ contract LockingCurve is Test {
             vm.startPrank(addresses[i]);
 
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             assertEq(lockingCurve.balanceOf(addresses[i]), amount * 10 ** 18);
             uint256 lockTime = lockingCurve.lockTime(addresses[i]);
@@ -585,6 +564,7 @@ contract LockingCurve is Test {
         //user 1 and 2 sell their tokens
         for (uint256 j = 0; j < 2; j++) {
             vm.startPrank(addresses[j]);
+            console.log("user", j, "selling tokens");
             lockingCurve.sellTokens(amount, 0);
             vm.stopPrank();
         }
@@ -604,9 +584,7 @@ contract LockingCurve is Test {
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             assertEq(lockingCurve.balanceOf(addresses[j]), amount * 10 ** 18);
             vm.stopPrank();
@@ -641,8 +619,8 @@ contract LockingCurve is Test {
 
         lockingCurve.approve(address(router), 10000000 ether);
         amounts = router.swapExactTokensForETH(
-            10000000 ether,
-            10000 gwei,
+            10000000 gwei,
+            0,
             path,
             addresses[0],
             block.timestamp + 10 minutes
@@ -672,9 +650,7 @@ contract LockingCurve is Test {
             totalCostWithSlippage = totalCost + slippage;
             vm.expectRevert();
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             vm.stopPrank();
         }
@@ -699,9 +675,7 @@ contract LockingCurve is Test {
             vm.startPrank(addresses[i]);
 
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             assertEq(lockingCurve.balanceOf(addresses[i]), amount * 10 ** 18);
             uint256 lockTime = lockingCurve.lockTime(addresses[i]);
@@ -749,9 +723,7 @@ contract LockingCurve is Test {
         console.log("user 0 is going to buy 0.01 ether worth of tokens");
         console.log("calculated next lock for user 0 is", secondsToHumanReadable(nextLockTime - block.timestamp));
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         assertEq(lockingCurve.balanceOf(new_addresses[0]), amount * 10 ** 18);
         uint256 lockTime = lockingCurve.lockTime(new_addresses[0]);
@@ -777,9 +749,7 @@ contract LockingCurve is Test {
         console.log("user 1 is going to buy 0.01 ether worth of tokens");
         console.log("calculated next lock for user 1 is", secondsToHumanReadable(nextLockTime - block.timestamp));
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         assertEq(lockingCurve.balanceOf(new_addresses[1]), amount * 10 ** 18);
         lockTime = lockingCurve.lockTime(new_addresses[1]);
@@ -814,9 +784,7 @@ contract LockingCurve is Test {
             console.log("user", i, "is going to buy 0.01 ether worth of tokens");
             console.log("calculated next lock for user", i, "is", secondsToHumanReadable(nextLockTime - block.timestamp));
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             assertEq(lockingCurve.balanceOf(new_addresses[i]), amount * 10 ** 18);
             lockTime = lockingCurve.lockTime(new_addresses[i]);
@@ -845,9 +813,7 @@ contract LockingCurve is Test {
         console.log("USER 5 is going to buy 0.01 ether worth of tokens");
         console.log("calculated next lock for USER 5 is", secondsToHumanReadable(nextLockTime - block.timestamp));
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         assertEq(lockingCurve.balanceOf(new_addresses[5]), amount * 10 ** 18);
         lockTime = lockingCurve.lockTime(new_addresses[5]);
@@ -886,9 +852,7 @@ contract LockingCurve is Test {
             console.log("user", i, "is going to buy 0.02 ether worth of tokens");
             console.log("calculated next lock for user", i, "is", secondsToHumanReadable(nextLockTime - block.timestamp));
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             assertEq(lockingCurve.balanceOf(new_addresses[i]), amount * 10 ** 18);
             lockTime = lockingCurve.lockTime(new_addresses[i]);
@@ -935,9 +899,7 @@ contract LockingCurve is Test {
     console.log("USER 10 is going to buy 0.5 ether worth of tokens");
     console.log("calculated next lock for USER 10 is", secondsToHumanReadable(nextLockTime - block.timestamp));
     lockingCurve.buyTokens{value: totalCostWithSlippage}(
-        amount,
-        100,
-        totalCost
+        amount
     );
     assertEq(lockingCurve.balanceOf(new_addresses[10]), amount * 10 ** 18);
     lockTime = lockingCurve.lockTime(new_addresses[10]);
@@ -965,9 +927,7 @@ contract LockingCurve is Test {
     console.log("USER 11 is going to buy 0.03 ether worth of tokens");
     console.log("calculated next lock for USER 11 is", secondsToHumanReadable(nextLockTime - block.timestamp));
     lockingCurve.buyTokens{value: totalCostWithSlippage}(
-        amount,
-        100,
-        totalCost
+        amount
     );
     assertEq(lockingCurve.balanceOf(new_addresses[11]), amount * 10 ** 18);
     lockTime = lockingCurve.lockTime(new_addresses[11]);
@@ -1005,9 +965,7 @@ contract LockingCurve is Test {
         console.log("user", i, "is going to buy 0.03 ether worth of tokens");
         console.log("calculated next lock for user", i, "is", secondsToHumanReadable(nextLockTime - block.timestamp));
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         assertEq(lockingCurve.balanceOf(new_addresses[i]), amount * 10 ** 18);
         lockTime = lockingCurve.lockTime(new_addresses[i]);
@@ -1044,9 +1002,7 @@ contract LockingCurve is Test {
     console.log("user 15 is going to buy 0.1 ether worth of tokens");
     console.log("calculated next lock for user 15 is", secondsToHumanReadable(nextLockTime - block.timestamp));
     lockingCurve.buyTokens{value: totalCostWithSlippage}(
-        amount,
-        100,
-        totalCost
+        amount
     );
 
     //user 16 buys 0.04 ether
@@ -1064,9 +1020,7 @@ contract LockingCurve is Test {
     console.log("user 16 is going to buy 0.04 ether worth of tokens");
     console.log("calculated next lock for user 16 is", secondsToHumanReadable(nextLockTime - block.timestamp));
     lockingCurve.buyTokens{value: totalCostWithSlippage}(
-        amount,
-        100,
-        totalCost
+        amount
     );
 
     //3 hours passes
@@ -1117,9 +1071,7 @@ contract LockingCurve is Test {
         console.log("user 0 is going to buy 0.002 ether worth of tokens");
         console.log("calculated next lock for user 0 is", secondsToHumanReadable(nextLockTime - block.timestamp));
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         assertEq(lockingCurve.balanceOf(new_addresses[0]), amount * 10 ** 18);
         uint256 lockTime = lockingCurve.lockTime(new_addresses[0]);
@@ -1149,9 +1101,7 @@ contract LockingCurve is Test {
         console.log("user 1 is going to buy 0.5 ether worth of tokens");
         console.log("calculated next lock for user 1 is", secondsToHumanReadable(nextLockTime - block.timestamp));
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         assertEq(lockingCurve.balanceOf(new_addresses[1]), amount * 10 ** 18);
         lockTime = lockingCurve.lockTime(new_addresses[1]);
@@ -1161,7 +1111,6 @@ contract LockingCurve is Test {
             new_addresses[1]
         );
         console.log("contract lock remaining time for user 1 is", secondsToHumanReadable(contractLockRemaining));
-
         // 20 hours passes
         console.log("   ");
         console.log("20 hours passes");
@@ -1183,9 +1132,7 @@ contract LockingCurve is Test {
         console.log("user 2 is going to buy 0.5 ether worth of tokens");
         console.log("calculated next lock for user 2 is", secondsToHumanReadable(nextLockTime - block.timestamp));
         lockingCurve.buyTokens{value: totalCostWithSlippage}(
-            amount,
-            100,
-            totalCost
+            amount
         );
         assertEq(lockingCurve.balanceOf(new_addresses[2]), amount * 10 ** 18);
         lockTime = lockingCurve.lockTime(new_addresses[2]);
@@ -1235,9 +1182,7 @@ contract LockingCurve is Test {
             console.log("total ether collected", totalEthCollected);
             console.log("total supply", totalSupply- 200_000_000);
             lockingCurve.buyTokens{value: totalCostWithSlippage}(
-                amount,
-                100,
-                totalCost
+                amount
             );
             //assertEq(lockingCurve.balanceOf(new_addresses[i]), amount * 10 ** 18);
             uint256 lockTime = lockingCurve.lockTime(new_addresses[i]);
@@ -1252,4 +1197,202 @@ contract LockingCurve is Test {
         }
     }
 
+    function testLocksAfterDex() public {
+        //10 user buys 0.3 eth worth of tokens
+        //buy the tokens
+        for (uint256 i = 0; i < 10; i++) {
+            vm.startPrank(addresses[i]);
+            uint256 scaledSupply = lockingCurve.scaledSupply();
+            uint256 amount = tokenCalculator.calculateTokensForEth(scaledSupply, 1000 , 0.3 ether);
+            uint256 cost = lockingCurve.calculateCost(amount);
+            uint256 tax = cost / 100;
+            uint256 totalCost = cost + tax;
+            uint256 slippage = totalCost / 100;
+            uint256 totalCostWithSlippage = totalCost + slippage;
+            uint256 nextLockTime = lockingCurve.calculateNextLockTime();
+            lockingCurve.buyTokens{value: totalCostWithSlippage}(
+                amount
+            );
+            assertEq(lockingCurve.balanceOf(addresses[i]), amount * 10 ** 18);
+            uint256 lockTime = lockingCurve.lockTime(addresses[i]);
+            assertEq(lockTime, nextLockTime);
+            uint256 contractLockRemaining = lockingCurve.checkRemainingLockTime(
+                addresses[i]
+            );
+            vm.warp(block.timestamp + 5 minutes);
+            vm.stopPrank();
+        }
+
+        //vote to send to dex
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            lockingCurve.sendToDex();
+            vm.stopPrank();
+        }
+
+
+        assertEq(lockingCurve.dexStage(), true);
+
+        // try to buy tokens from the locking curve
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            uint256 amount = 150000;
+            uint256 cost = lockingCurve.calculateCost(amount);
+            uint256 tax = cost / 100;
+            uint256 totalCost = cost + tax;
+            uint256 slippage = totalCost / 100;
+            uint256 totalCostWithSlippage = totalCost + slippage;
+            vm.expectRevert();
+            lockingCurve.buyTokens{value: totalCostWithSlippage}(
+                amount
+            );
+            vm.stopPrank();
+        }
+
+        // try to sell tokens to the locking curve
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            uint256 amount = 150000;
+            vm.expectRevert();
+            lockingCurve.sellTokens(amount, 0);
+            vm.stopPrank();
+        }
+
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            address[] memory path = new address[](2);
+            path[0] = address(lockingCurve);
+            path[1] = router.WETH();
+            uint256[] memory amounts = router.getAmountsOut(10000000 ether, path);
+
+            lockingCurve.approve(address(router), 10000000 ether);
+            vm.expectRevert();
+            amounts = router.swapExactTokensForETH(
+                10000000 gwei,
+                0,
+                path,
+                addresses[j],
+                block.timestamp + 10 minutes
+            );
+            vm.stopPrank();
+        }
+
+        //try to buy tokens from the dex
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            address[] memory path = new address[](2);
+            path[0] = router.WETH();
+            path[1] = address(lockingCurve);
+            vm.expectRevert();
+            router.swapExactETHForTokens{value: 0.1 ether}(
+                10000 gwei,
+                path,
+                addresses[j],
+                block.timestamp + 10 minutes
+            );
+            vm.stopPrank();
+        }
+
+        //a new user buys from the dex
+        vm.startPrank(addresses[10]);
+        address[] memory path = new address[](2);
+        path[0] = router.WETH();
+        path[1] = address(lockingCurve);
+        router.swapExactETHForTokens{value: 0.1 ether}(
+            10000 gwei,
+            path,
+            addresses[10],
+            block.timestamp + 10 minutes
+        );
+
+        assertGt(lockingCurve.balanceOf(addresses[10]), 0);
+
+        vm.warp(block.timestamp + 25 hours);
+
+        // a new user buys from the dex
+        vm.startPrank(addresses[11]);
+        path = new address[](2);
+        path[0] = router.WETH();
+        path[1] = address(lockingCurve);
+
+        router.swapExactETHForTokens{value: 0.1 ether}(
+            10000 gwei,
+            path,
+            addresses[11],
+            block.timestamp + 10 minutes
+        );
+
+        assertGt(lockingCurve.balanceOf(addresses[11]), 0);
+        //try to buy tokens from the dex
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            address[] memory path = new address[](2);
+            path[0] = router.WETH();
+            path[1] = address(lockingCurve);
+
+            router.swapExactETHForTokens{value: 0.1 ether}(
+                10000 gwei,
+                path,
+                addresses[j],
+                block.timestamp + 10 minutes
+            );
+            vm.stopPrank();
+        }
+
+        //try to sell tokens to the dex
+        for (uint256 j = 0; j < 5; j++) {
+            uint256 balance = lockingCurve.balanceOf(addresses[j]);
+            vm.startPrank(addresses[j]);
+            address[] memory path = new address[](2);
+            path[0] = address(lockingCurve);
+            path[1] = router.WETH();
+
+            lockingCurve.approve(address(router), balance);
+            router.swapExactTokensForETH(
+                balance,
+                10000 gwei,
+                path,
+                addresses[j],
+                block.timestamp + 10 minutes
+            );
+
+            assertEq(lockingCurve.balanceOf(addresses[j]), 0);
+            vm.stopPrank();
+        }
+
+    }
+
+    function testIronNodeSellFunction() public {
+        //buy tokens from the locking curve
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            uint256 amount = 150000000;
+            uint256 cost = lockingCurve.calculateCost(amount);
+            uint256 tax = cost / 100;
+            uint256 totalCost = cost + tax;
+            uint256 slippage = totalCost / 100;
+            uint256 totalCostWithSlippage = totalCost + slippage;
+            uint256 nextLockTime = lockingCurve.calculateNextLockTime();
+            lockingCurve.buyTokens{value: totalCostWithSlippage}(
+                amount
+            );
+            assertEq(lockingCurve.balanceOf(addresses[j]), amount * 10 ** 18);
+            uint256 lockTime = lockingCurve.lockTime(addresses[j]);
+            assertEq(lockTime, nextLockTime);
+            uint256 contractLockRemaining = lockingCurve.checkRemainingLockTime(
+                addresses[j]
+            );
+            vm.warp(block.timestamp + 5 minutes);
+            vm.stopPrank();
+        }   
+        //try to make them sell tokens
+        for (uint256 j = 0; j < 5; j++) {
+            vm.startPrank(addresses[j]);
+            uint256 amount = 150000000;
+            vm.expectRevert();
+            lockingCurve.sellTokens(amount, 0);
+            vm.stopPrank();
+        }
+
+    }
 }

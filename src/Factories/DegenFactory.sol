@@ -17,7 +17,7 @@ import "../Interfaces/ISuperMemeRegistry.sol";
                                                     ███    ███                                                           
 */
 
-contract DegenFactory  is Ownable  {
+contract DegenFactory is Ownable  {
 
     event TokenCreated(
         address indexed tokenAddress,
@@ -29,7 +29,7 @@ contract DegenFactory  is Ownable  {
 
     ISuperMemeRegistry public superMemeRegistry;
 
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
     address public revenueCollector;
     address[] public tokenAddresses;
 
@@ -46,19 +46,14 @@ contract DegenFactory  is Ownable  {
         uint256 _devLockDuration,
         uint256 _buyEth
     ) public payable returns (address token) {
-
         require(msg.value >= createTokenRevenue, "Insufficient funds");
         require(
-            _devLockDuration == 0 ||
-                _devLockDuration == 1 weeks ||
-                _devLockDuration == 2 weeks ||
-                _devLockDuration == 3 weeks ||
-                _devLockDuration == 4 weeks,
-            "Invalid dev lock duration"
+            (_devLockDuration >= 1 days && _devLockDuration <= 7 days && _devLockDuration % 1 days == 0) || _devLockDuration == 12 hours || _devLockDuration == 0,
+            "Invalid lock duration"
         );
         require(_devAddress == msg.sender, "Invalid dev address");
 
-        (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 50000}("");
+        (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 500000}("");
         require(success, "Transfer failed");
 
         if (
@@ -134,7 +129,6 @@ contract DegenFactory  is Ownable  {
     function setCreateTokenRevenue(uint256 _createTokenRevenue) public onlyOwner {
         createTokenRevenue = _createTokenRevenue;
     }
-
     function setSuperMemeRegistry(address _superMemeRegistry) public onlyOwner {
         superMemeRegistry = ISuperMemeRegistry(_superMemeRegistry);
     }

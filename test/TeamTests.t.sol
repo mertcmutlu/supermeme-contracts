@@ -20,7 +20,7 @@ contract TeamTests is Test {
     SuperMemeDegenBondingCurve public degenbondingcurve;
     SuperMemeRegistry public registry;
     RefundableFactory public factory;
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
     IUniswapV2Router02 public router;
     SuperMemeDegenBondingCurve public tTokenInstanceDegen;
     SuperMemeRefundableBondingCurve public tTokenInstanceRefund;
@@ -31,8 +31,6 @@ contract TeamTests is Test {
 
 
     function setUp() public {
-        
-        uint256 createTokenRevenue = 0.00001 ether;
         router = IUniswapV2Router02(address(0x5633464856F58Dfa9a358AfAf49841FEE990e30b));
         address fakeContract = address(0x12123123);
         unifactory = IUniswapFactory(address(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6));
@@ -70,9 +68,9 @@ contract TeamTests is Test {
         uint256 cost = tTokenInstanceRefund.calculateCost(buyAmount);
         uint256 tax = cost / 100;
         uint256 totalCost = cost + tax;
-        uint256 slippage = cost / 100;
+        uint256 slippage = totalCost / 100;
 
-        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
         console.log("user 0 buys 200m tokens");
         console.log("cost: ", totalCost);
         console.log("user 0 balance: ", tTokenInstanceRefund.balanceOf(addresses[0]));
@@ -82,8 +80,8 @@ contract TeamTests is Test {
          cost = tTokenInstanceRefund.calculateCost(buyAmount);
          tax = cost / 100;
          totalCost = cost + tax;
-         slippage = cost / 100;
-        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
+         slippage = totalCost / 100;
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
         console.log("         ");
         console.log("user 1 buys 200m tokens");
         console.log("cost: ", totalCost);
@@ -107,8 +105,8 @@ contract TeamTests is Test {
             cost = tTokenInstanceRefund.calculateCost(buyAmount);
             tax = cost / 100;
             totalCost = cost + tax;
-            slippage = cost / 100;
-            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
+            slippage = totalCost / 100;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
             console.log("         ");
             console.log("user ", i, " buys 100m tokens");
             console.log("          ");
@@ -146,8 +144,8 @@ contract TeamTests is Test {
             cost = tTokenInstanceRefund.calculateCost(buyAmount);
             tax = cost / 100;
             totalCost = cost + tax;
-            slippage = cost / 100;
-            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
+            slippage = totalCost / 100;
+            tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
             console.log("         ");
             console.log("user ", i, " buys 10m tokens");
             console.log("          ");
@@ -187,8 +185,8 @@ contract TeamTests is Test {
         cost = tTokenInstanceRefund.calculateCost(buyAmount);
         tax = cost / 100;
         totalCost = cost + tax;
-        slippage = cost / 100;
-        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
+        slippage = totalCost / 100;
+        tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount));
         console.log("         ");
         console.log("user 8 buys 50m tokens");
         console.log("          ");
@@ -233,7 +231,7 @@ contract TeamTests is Test {
         //     tax = cost / 100;
         //     totalCost = cost + tax;
         //     slippage = cost / 100;
-        //     tTokenInstanceRefund.buyTokens{value: totalCost + slippage}(buyAmount,100,totalCost);
+        //     tTokenInstanceRefund.buyTokens{value: totalCost + slippage}((buyAmount),totalCost);
         //     console.log("         ");
         //     console.log("user ", i, " buys 100m tokens");
         //     console.log("          ");

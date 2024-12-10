@@ -28,7 +28,7 @@ contract RefundableFactory is Ownable{
 
     ISuperMemeRegistry public superMemeRegistry;
 
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
     address public revenueCollector;
     address[] public tokenAddresses;
 
@@ -46,7 +46,7 @@ contract RefundableFactory is Ownable{
         require(msg.value >= createTokenRevenue, "Insufficient funds");
         require(_devAddress == msg.sender, "Invalid dev address");
 
-        (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 50000}("");
+        (bool success, ) = revenueCollector.call{value: createTokenRevenue, gas: 500000}("");
         require(success, "Transfer failed");
 
         if (

@@ -11,16 +11,26 @@ import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 //import uniswap pair
 import {IUniswapV2Pair} from "../src/Interfaces/IUniswapV2Pair.sol";
 import {IUniswapV2Router02} from "../src/Interfaces/IUniswapV2Router02.sol";
+import "../src/SuperMemeToken/SuperMemePublicStaking.sol";
+import "../src/SuperMemeToken/SuperMemeTreasuryVesting.sol";
+import "../src/SuperMemeToken/SuperMeme.sol";
 
 contract BondingCurvePricingTest is Test {
     uint256 public dummyBuyAmount = 1000;
     uint256 public dummyBuyAmount2 = 1000000;
+    uint256 public tgeDate = 1732482000;
     IUniswapV2Pair public pair;
     IUniswapFactory public unifactory;    
     SuperMemeDegenBondingCurve public degenbondingcurve;
     RefundableFactory public refundableFactory;
     DegenFactory public degenFactory;
-    uint256 public createTokenRevenue = 0.00001 ether;
+
+    SuperMeme public spr;
+    SuperMemePublicStaking public publicStaking;
+    SuperMemeTreasuryVesting public treasuryVesting;
+
+
+    uint256 public createTokenRevenue = 0.0008 ether;
     IUniswapV2Router02 public router;
     SuperMemeRegistry public registry;
     SuperMemeDegenBondingCurve public testTokenInstanceDegen;
@@ -32,10 +42,10 @@ contract BondingCurvePricingTest is Test {
     address public addr3 = address(0x101112);
     function setUp() public {
         //base mainnet router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
-        //base sepolia router address 0x6682375ebC1dF04676c0c5050934272368e6e883
+        //base sepolia router address 0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24
 
-        createTokenRevenue = 0.00001 ether;
-        router = IUniswapV2Router02(address(0x6682375ebC1dF04676c0c5050934272368e6e883));
+        createTokenRevenue = 0.0008 ether;
+        router = IUniswapV2Router02(address(0x4752ba5DBc23f44D87826276BF6Fd6b1C372aD24));
         address fakeContract = address(0x12123123);
         unifactory = IUniswapFactory(address(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6));
         degenbondingcurve = new SuperMemeDegenBondingCurve(
@@ -53,7 +63,12 @@ contract BondingCurvePricingTest is Test {
         vm.deal(addr2, 1000 ether);
         vm.startPrank(addr1);
 
-        revenueCollector = new SuperMemeRevenueCollector();
+        spr = new SuperMeme();
+        publicStaking = new SuperMemePublicStaking(address(spr));
+        treasuryVesting = new SuperMemeTreasuryVesting(address(spr), tgeDate);
+
+
+        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicStaking), address(treasuryVesting));
         registry = new SuperMemeRegistry();
 
 
@@ -66,7 +81,7 @@ contract BondingCurvePricingTest is Test {
 
         degenFactory.setRevenueCollector(address(revenueCollector));
         refundableFactory.setRevenueCollector(address(revenueCollector));
-        //Create a token
+
         address testToken = degenFactory.createToken{value: createTokenRevenue}(
             "SuperMeme",
             "MEME",
@@ -110,7 +125,9 @@ contract BondingCurvePricingTest is Test {
             uint256 cost = testTokenInstanceDegen.calculateCost(amount);
             uint256 tax = cost / 100;
             uint256 totalCost = cost + tax;
-            testTokenInstanceDegen.buyTokens{value: totalCost}(amount, 100, totalCost);
+            uint256 slippage = totalCost / 100;
+            uint256 totalCostWithSlippage = totalCost + slippage;
+            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(amount);
             uint256 pricePerToken = testTokenInstanceDegen.calculateCost(1);
             uint256 totalSupply = testTokenInstanceDegen.totalSupply();
             //
@@ -124,10 +141,11 @@ contract BondingCurvePricingTest is Test {
             console.log("i", i);
             uint256 amount = 5000000;
             uint256 cost = testTokenInstanceRefund.calculateCost(amount);
-            uint256 tax = cost / 100;
-            uint256 totalCost = cost + tax;
+            uint256 totalCost = cost + (cost / 100);
+            uint256 slippage = totalCost / 100;
+            uint256 totalCostWithSlippage = totalCost + slippage;
             vm.roll(block.number + 1);
-            testTokenInstanceRefund.buyTokens{value: totalCost}(amount, 100, totalCost);
+            testTokenInstanceRefund.buyTokens{value: totalCostWithSlippage}(amount);
             uint256 pricePerToken = testTokenInstanceRefund.calculateCost(1);
             uint256 totalSupply = testTokenInstanceRefund.totalSupply();
             console.log("totalSupply", totalSupply);
@@ -140,22 +158,19 @@ contract BondingCurvePricingTest is Test {
         for (uint256 i = 0; i < 160; i++) {
             uint256 amount = 5000000;
             uint256 cost = testTokenInstanceDegen.calculateCost(amount);
-            uint256 tax = cost / 100;
-            uint256 totalCost = cost + tax;
+            uint256 totalCost = cost + (cost / 100);
+            uint256 totalCostWithSlippage = totalCost;
             vm.roll(block.number + 1);
-            testTokenInstanceDegen.buyTokens{value: totalCost}(amount, 100, totalCost);
-            uint256 pricePerToken = testTokenInstanceDegen.calculateCost(1);
-            uint256 totalSupply = testTokenInstanceDegen.totalSupply();
+            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(amount);
+            // uint256 pricePerToken = testTokenInstanceDegen.calculateCost(1);
+            // uint256 totalSupply = testTokenInstanceDegen.totalSupply();
             //console.log("pricePerToken", pricePerToken);
             //
         }
-        //
-        uint256 balance = address(testTokenInstanceDegen).balance;
-        address weth = router.WETH();
 
         address[] memory path = new address[](2);
         path[0] = address(testTokenInstanceDegen);
-        path[1] = (weth);
+        path[1] = router.WETH();
 
         uint256[] memory amounts;
         amounts = router.getAmountsOut(1000000 ether, path);

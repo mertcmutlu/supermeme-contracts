@@ -8,11 +8,16 @@ import "../src/SuperMemeDegenBondingCurve.sol";
 import "../src/Factories/SuperMemeRegistry.sol";
 import "../src/SuperMemeRevenueCollector.sol";
 import "../src/Factories/CommunityLockFactory.sol";
+import "../src/SuperMemeToken/SuperMemePublicStaking.sol";
+import "../src/SuperMemeToken/SuperMemeTreasuryVesting.sol";
+import "../src/SuperMemeToken/SuperMeme.sol";
 import {IUniswapFactory} from "../src/Interfaces/IUniswapFactory.sol";
 
 contract TestFactories is Test {
     uint256 public dummyBuyAmount = 1000;
     uint256 public dummyBuyAmount2 = 1000000;
+
+    uint256 public tgeDate = 1732482000;
 
     IUniswapFactory public uniswapFactory;
     RefundableFactory public refundableFactory;
@@ -22,7 +27,12 @@ contract TestFactories is Test {
     SuperMemeRegistry public registry;
     SuperMemeRevenueCollector public revenueCollector;
     CommunityLockFactory public communityLockFactory;
-    uint256 public createTokenRevenue = 0.00001 ether;
+
+    SuperMemePublicStaking public publicStaking;
+    SuperMemeTreasuryVesting public treasuryVesting;
+    SuperMeme public spr;
+
+    uint256 public createTokenRevenue = 0.0008 ether;
 
     address public owner = address(0x123);
     address public addr1 = address(0x456);
@@ -35,10 +45,14 @@ contract TestFactories is Test {
         vm.deal(owner, 1000 ether);
         vm.deal(addr1, 1000 ether);
 
-        uint256 createTokenRevenue = 0.00001 ether;
+        uint256 createTokenRevenue = 0.0008 ether;
 
-        revenueCollector = new SuperMemeRevenueCollector();
+        spr = new SuperMeme();
+        publicStaking = new SuperMemePublicStaking(address(spr));
+        treasuryVesting = new SuperMemeTreasuryVesting(address(spr), tgeDate);
 
+
+        revenueCollector = new SuperMemeRevenueCollector(address(spr), address(publicStaking), address(treasuryVesting));
 
         registry = new SuperMemeRegistry();
         degenFactory = new DegenFactory(address(registry));
@@ -55,7 +69,6 @@ contract TestFactories is Test {
         refundableFactory.setCreateTokenRevenue(createTokenRevenue);
         lockingCurveFactory.setCreateTokenRevenue(createTokenRevenue);
         communityLockFactory.setCreateTokenRevenue(createTokenRevenue);
-
 
 
         registry.setFactory(address(degenFactory));
@@ -140,7 +153,6 @@ contract TestFactories is Test {
         buyAmounts[6] = 45000000;
         buyAmounts[7] = 110000000;
         for (uint256 i = 0; i < buyAmounts.length; i++) {
-            
             uint256 buyAmount = buyAmounts[i];
             uint256 cost = degenbondingcurve.calculateCost(buyAmount);
             uint256 tax = cost / 100;
@@ -185,8 +197,7 @@ contract TestFactories is Test {
             );
         assertEq(newTokenInstance.balanceOf(addr1), buyAmount * 10 ** 18);
     }
-        function testRefundableYesDevBuy() public {
-        //with the loop please
+    function testRefundableYesDevBuy() public {
         vm.startPrank(addr1);
         uint256[] memory buyAmounts = new uint256[](8);
         buyAmounts[0] = 500;

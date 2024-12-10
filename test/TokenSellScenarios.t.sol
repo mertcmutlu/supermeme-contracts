@@ -16,7 +16,7 @@ contract TokenSellScenarios is Test {
     IUniswapV2Pair public pair;
     IUniswapFactory public unifactory;    
     SuperMemeDegenBondingCurve public degenbondingcurve;
-    uint256 public createTokenRevenue = 0.00001 ether;
+    uint256 public createTokenRevenue = 0.0008 ether;
     IUniswapV2Router02 public router;
     SuperMemeRegistry public registry;
     SuperMemeDegenBondingCurve public testTokenInstanceDegen;
@@ -28,7 +28,6 @@ contract TokenSellScenarios is Test {
     address public addr2 = address(0x789);
     address public addr3 = address(0x101112);
     function setUp() public {
-        uint256 createTokenRevenue = 0.00001 ether;
         router = IUniswapV2Router02(address(0x5633464856F58Dfa9a358AfAf49841FEE990e30b));
         address fakeContract = address(0x12123123);
         unifactory = IUniswapFactory(address(0x8909Dc15e40173Ff4699343b6eB8132c65e18eC6));
@@ -100,7 +99,7 @@ contract TokenSellScenarios is Test {
         uint256 totalCost = cost + tax;
         uint256 slippage = totalCost / 100;
         uint256 totalCostWithSlippage = totalCost + slippage;
-        testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(buyAmount,100,totalCostWithSlippage);
+        testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}((buyAmount));
         assertEq(testTokenInstanceDegen.balanceOf(addr1), buyAmount * 10 **18);
         uint256 tokenBalance = testTokenInstanceDegen.balanceOf(addr1);
         testTokenInstanceDegen.sellTokens(sellAmount,100);
@@ -125,7 +124,7 @@ contract TokenSellScenarios is Test {
             uint256 totalCost = cost + tax;
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
-            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(buyAmount,100,totalCostWithSlippage);
+            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}((buyAmount));
             assertEq(testTokenInstanceDegen.balanceOf(addresses[i]), buyAmount * 10 **18);
             uint256 costAfterBuy = testTokenInstanceDegen.calculateCost(1);
             assertGt(costAfterBuy, costPerToken);
@@ -155,7 +154,7 @@ contract TokenSellScenarios is Test {
             uint256 totalCost = cost + tax;
             uint256 slippage = totalCost / 100;
             uint256 totalCostWithSlippage = totalCost + slippage;
-            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(buyAmount,100,totalCostWithSlippage);
+            testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}((buyAmount));
             assertEq(testTokenInstanceDegen.balanceOf(addresses[i]), buyAmount * 10 **18);
             uint256 costAfterBuy = testTokenInstanceDegen.calculateCost(1);
             assertGt(costAfterBuy, costPerToken);
@@ -173,7 +172,7 @@ contract TokenSellScenarios is Test {
         uint256 totalCost = cost + tax;
         uint256 slippage = totalCost / 100;
         uint256 totalCostWithSlippage = totalCost + slippage;
-        testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}(buyAmount,100,totalCostWithSlippage);
+        testTokenInstanceDegen.buyTokens{value: totalCostWithSlippage}((buyAmount));
         assertEq(testTokenInstanceDegen.balanceOf(addr1), buyAmount * 10 **18);
         uint256 tokenBalance = testTokenInstanceDegen.balanceOf(addr1);
         vm.expectRevert();
@@ -197,7 +196,7 @@ contract TokenSellScenarios is Test {
         uint256 totalCost = cost + tax;
         uint256 slippage = totalCost / 100;
         uint256 totalCostWithSlippage = totalCost + slippage;
-        testTokenInstanceDevLock.buyTokens{value: totalCostWithSlippage}(buyAmount,100,totalCostWithSlippage);
+        testTokenInstanceDevLock.buyTokens{value: totalCostWithSlippage}((buyAmount));
         assertEq(testTokenInstanceDevLock.balanceOf(addr2), buyAmount * 10 **18);
         uint256 tokenBalance = testTokenInstanceDevLock.balanceOf(addr2);
         testTokenInstanceDevLock.sellTokens(buyAmount,100);
